@@ -20,9 +20,9 @@ func (w *capturingRedisInboxWriter) Insert(_ context.Context, _ string, messages
 func TestControlAwareRedisInboxWriterDelegatesUsageOnlyBatchWithoutCopy(t *testing.T) {
 	delegate := &capturingRedisInboxWriter{}
 	writer := poller.NewControlAwareRedisInboxWriter(delegate, nil)
-	messages := []string{`{"request_id":"one"}`, `{"request_id":"two"}`}
+	messages := []string{`{"provider":"codex","request_id":"one"}`, `{"provider":"codex","request_id":"two"}`}
 
-	inserted, err := writer.Insert(context.Background(), poller.RedisIngestSourceHTTPPull, messages, time.Now())
+	inserted, err := writer.Insert(context.Background(), poller.RedisIngestSourceRedisPull, messages, time.Now())
 	if err != nil {
 		t.Fatalf("Insert returned error: %v", err)
 	}

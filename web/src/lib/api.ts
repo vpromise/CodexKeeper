@@ -244,22 +244,6 @@ export async function login(password: string): Promise<void> {
   await activateEmbedSessionFallback(response)
 }
 
-export async function loginWithCPAAPIKey(apiKey: string): Promise<void> {
-  if (isCPAMCEmbed()) {
-    clearEmbedSessionToken()
-  }
-  const response = await apiFetch(apiPath('/auth/api-key-login'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ apiKey }),
-  })
-  if (!response.ok) {
-    await parseApiError(response, `Failed to login with CPA API key: ${response.status}`)
-  }
-  await activateEmbedSessionFallback(response)
-}
 
 export async function logout(): Promise<void> {
   try {
@@ -320,32 +304,8 @@ const buildUsageRangeParams = (request: UsageRangeRequest): URLSearchParams => {
   return params
 }
 
-export async function fetchKeyOverview(request: UsageRangeRequest, signal?: AbortSignal): Promise<UsageOverviewResponse> {
-  const params = buildUsageRangeParams(request)
-  const response = await apiFetch(`${apiPath('/key-overview')}?${params.toString()}`, { signal })
-  if (!response.ok) {
-    await parseApiError(response, `Failed to load key overview: ${response.status}`)
-  }
-  return response.json()
-}
 
-export async function fetchKeyAnalysis(request: UsageRangeRequest, signal?: AbortSignal): Promise<AnalysisResponse> {
-  const params = buildUsageRangeParams(request)
-  const response = await apiFetch(`${apiPath('/key-analysis')}?${params.toString()}`, { signal })
-  if (!response.ok) {
-    await parseApiError(response, `Failed to load key analysis: ${response.status}`)
-  }
-  return response.json()
-}
 
-export async function fetchKeyAnalysisLatency(request: UsageRangeRequest, signal?: AbortSignal): Promise<AnalysisLatencyDiagnostics> {
-  const params = buildUsageRangeParams(request)
-  const response = await apiFetch(`${apiPath('/key-analysis/latency')}?${params.toString()}`, { signal })
-  if (!response.ok) {
-    await parseApiError(response, `Failed to load key analysis latency: ${response.status}`)
-  }
-  return response.json()
-}
 
 export interface FetchUsageActivityOptions {
   request: UsageActivityRequest
@@ -363,31 +323,7 @@ const buildUsageActivityParams = (request: UsageActivityRequest): URLSearchParam
   return buildUsageRangeParams(request)
 }
 
-export async function fetchKeyActivity({ request, signal }: FetchUsageActivityOptions): Promise<UsageActivityResponse> {
-  const params = buildUsageActivityParams(request)
-  const response = await apiFetch(`${apiPath('/key-activity')}?${params.toString()}`, { signal })
-  if (!response.ok) {
-    await parseApiError(response, `Failed to load key activity: ${response.status}`)
-  }
-  return response.json()
-}
 
-export async function fetchKeyOverviewRealtime(options: FetchKeyOverviewRealtimeOptions = {}): Promise<OverviewRealtimeBlock> {
-  const { window, signal } = options
-  const params = new URLSearchParams()
-  if (window) {
-    params.set('window', window)
-  }
-  const query = params.toString()
-  const response = await apiFetch(`${apiPath('/key-overview/realtime')}${query ? `?${query}` : ''}`, { signal })
-  if (!response.ok) {
-    await parseApiError(response, `Failed to load key overview realtime: ${response.status}`)
-  }
-  const payload = await response.json() as Partial<OverviewRealtimeBlock> & {
-    current_usage?: Partial<OverviewRealtimeBlock['current_usage']>;
-  }
-  return normalizeOverviewRealtimeBlock(payload, window)
-}
 
 export async function fetchUsageOverview(request: UsageRangeRequest, signal?: AbortSignal, apiKeyId?: string): Promise<UsageOverviewResponse> {
   const params = buildUsageRangeParams(request)

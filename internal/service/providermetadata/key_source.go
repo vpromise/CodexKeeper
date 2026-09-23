@@ -3,7 +3,6 @@ package providermetadata
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"cpa-usage-keeper/internal/cpa/dto/providerconfig"
@@ -13,10 +12,10 @@ import (
 // providerKeyFetch 描述一个标准 API Key endpoint 的公开 Fetcher 方法。
 type providerKeyFetch func(context.Context, Fetcher) (*response.ProviderKeyConfigResult, error)
 
-// newProviderKeySource 组装七类标准 API Key source 的共同状态转换。
-func newProviderKeySource(id string, providerType string, defaultDisplayName string, warningName string, optionalNotFound bool, endpointFetch providerKeyFetch) source {
+// newProviderKeySource 组装两类标准 API Key source 的共同状态转换。
+func newProviderKeySource(id string, providerType string, defaultDisplayName string, warningName string, endpointFetch providerKeyFetch) source {
 	// item 先保存不随请求变化的来源合同。
-	item := source{id: id, providerType: providerType, defaultDisplayName: defaultDisplayName, warningName: warningName, optionalNotFound: optionalNotFound}
+	item := source{id: id, providerType: providerType, defaultDisplayName: defaultDisplayName, warningName: warningName}
 	// fetch 只调用当前 endpoint，再进入共享标准 key 归一化。
 	item.fetch = func(ctx context.Context, fetcher Fetcher) sourceResult {
 		// endpointFetch 由各 source 文件显式绑定，避免运行时 switch 或动态注册。
@@ -30,12 +29,8 @@ func newProviderKeySource(id string, providerType string, defaultDisplayName str
 func fetchProviderKeySource(ctx context.Context, fetcher Fetcher, item source, endpointFetch providerKeyFetch) sourceResult {
 	// 调用当前 source 文件绑定的 CPA client 方法。
 	result, err := endpointFetch(ctx, fetcher)
-	// endpoint error 必须先判断两个新来源的 typed 404。
+	// Any endpoint error is reported without trying alternate versions.
 	if err != nil {
-		// optional 只依赖非 nil result 的真实状态码，禁止解析错误字符串。
-		if item.optionalNotFound && result != nil && result.StatusCode == http.StatusNotFound {
-			return sourceResult{}
-		}
 		// 其它错误保留来源名称并交给 registry 稳定归并。
 		return sourceResult{warning: fmt.Errorf("fetch %s: %w", item.warningName, err)}
 	}

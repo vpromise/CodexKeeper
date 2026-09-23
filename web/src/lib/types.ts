@@ -1,18 +1,12 @@
-export type AuthRole = 'admin' | 'api_key_viewer'
+export type AuthRole = 'admin'
 
-export interface AuthSessionAPIKeySummary {
-  display_key: string
-  alias?: string
-  local_ranking_enabled?: boolean
-}
 
 export interface AuthSessionResponse {
   authenticated: boolean
   role?: AuthRole
-  api_key?: AuthSessionAPIKeySummary
 }
 
-export type AuthManagedSessionKind = 'admin' | 'api_key'
+export type AuthManagedSessionKind = 'admin'
 export type AuthManagedSessionSource = 'standard' | 'embed'
 
 export interface AuthManagedSessionItem {
@@ -28,9 +22,6 @@ export interface AuthManagedSessionItem {
   loginIp?: string
   lastSeenIp?: string
   userAgent?: string
-  apiKeyId?: string
-  label?: string
-  displayKey?: string
 }
 
 export interface AuthManagedSessionsResponse {

@@ -10,6 +10,7 @@ import (
 	_ "unsafe"
 
 	"cpa-usage-keeper/internal/updatecheck"
+
 	"github.com/gin-gonic/gin"
 )
 

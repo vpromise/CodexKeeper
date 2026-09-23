@@ -10,7 +10,6 @@ describe('CredentialSubscriptionBadge', () => {
     const kinds: SubscriptionBadgeKind[] = [
       'codex-pro20x', 'codex-free', 'codex-unknown',
       'claude-free', 'claude-pro', 'claude-max', 'claude-team',
-      'antigravity-free', 'antigravity-pro', 'antigravity-ultra-lite', 'antigravity-ultra', 'antigravity-unknown',
     ]
     for (const kind of kinds) {
       const html = renderToStaticMarkup(createElement(CredentialSubscriptionBadge, {

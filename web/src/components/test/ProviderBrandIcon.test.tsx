@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { ProviderBrandIcon, providerBrandIconKey } from '../ProviderBrandIcon'
 
 describe('ProviderBrandIcon', () => {
-  it.each(['antigravity', 'claude', 'codex', 'devin', 'gemini', 'kimi', 'meta', 'openai', 'vertex', 'xai'])(
+  it.each(['claude', 'codex'])(
     'renders the shared avatar for %s', (providerType) => {
       expect(providerBrandIconKey(providerType)).toBe(providerType)
       const html = renderToStaticMarkup(<ProviderBrandIcon providerType={providerType} size={30} />)
@@ -13,9 +13,9 @@ describe('ProviderBrandIcon', () => {
     },
   )
 
-  it('normalizes supported Gemini aliases', () => {
-    expect(providerBrandIconKey('gemini-cli')).toBe('gemini')
-    expect(providerBrandIconKey('gemini-interactions')).toBe('gemini')
+  it('rejects removed provider aliases', () => {
+    expect(providerBrandIconKey('gemini-cli')).toBeUndefined()
+    expect(providerBrandIconKey('gemini-interactions')).toBeUndefined()
   })
 
   it('does not assign logos to plugin-only or unsupported identity types', () => {

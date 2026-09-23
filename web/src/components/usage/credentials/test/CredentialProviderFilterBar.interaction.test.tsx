@@ -30,7 +30,7 @@ describe('CredentialProviderFilterBar reset behaviour', () => {
     container.remove()
   })
 
-  const render = async (typeCounts: UsageIdentityTypeCount[], value: 'all' | 'openai', onChange: (next: string) => void) => {
+  const render = async (typeCounts: UsageIdentityTypeCount[], value: 'all' | 'codex', onChange: (next: string) => void) => {
     await act(async () => root.render(
       <CredentialProviderFilterBar
         scope="ai-provider"
@@ -44,10 +44,10 @@ describe('CredentialProviderFilterBar reset behaviour', () => {
   it.each([
     { label: 'not loaded', counts: [], calls: [] },
     { label: 'unavailable after loading', counts: [{ type: 'claude', count: 3 }], calls: [['all']] },
-    { label: 'available', counts: [{ type: 'openai', count: 2 }, { type: 'claude', count: 3 }], calls: [] },
+    { label: 'available', counts: [{ type: 'codex', count: 2 }, { type: 'claude', count: 3 }], calls: [] },
   ])('reconciles a restored filter when counts are $label', async ({ counts, calls }) => {
     const onChange = vi.fn()
-    await render(counts, 'openai', onChange)
+    await render(counts, 'codex', onChange)
     expect(onChange.mock.calls).toEqual(calls)
   })
 })

@@ -12,11 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"cpa-usage-keeper/internal/auth"
 	"cpa-usage-keeper/internal/logging"
 	"cpa-usage-keeper/internal/poller"
 	"cpa-usage-keeper/internal/quota"
-	rankinghttpapi "cpa-usage-keeper/internal/ranking/httpapi"
 	"cpa-usage-keeper/internal/service"
 	"cpa-usage-keeper/internal/updatecheck"
 	"cpa-usage-keeper/internal/version"
@@ -58,8 +56,6 @@ type OptionalProviders struct {
 	AuthFiles        service.AuthFilesManagementProvider
 	CredentialStatus service.CredentialStatusProvider
 	RequestLogs      service.RequestLogProvider
-	Ranking          rankinghttpapi.Provider
-	LocalRanking     rankinghttpapi.LocalProvider
 	Status           StatusRouteConfig
 }
 
@@ -103,8 +99,6 @@ func NewRouter(
 	var authFilesProvider service.AuthFilesManagementProvider
 	var credentialStatusProvider service.CredentialStatusProvider
 	var requestLogProvider service.RequestLogProvider
-	var rankingProvider rankinghttpapi.Provider
-	var localRankingProvider rankinghttpapi.LocalProvider
 	var statusConfig StatusRouteConfig
 	if len(optionalProviders) > 0 {
 		usageIdentityProvider = optionalProviders[0].UsageIdentity
@@ -114,17 +108,14 @@ func NewRouter(
 		authFilesProvider = optionalProviders[0].AuthFiles
 		credentialStatusProvider = optionalProviders[0].CredentialStatus
 		requestLogProvider = optionalProviders[0].RequestLogs
-		rankingProvider = optionalProviders[0].Ranking
-		localRankingProvider = optionalProviders[0].LocalRanking
 		statusConfig = optionalProviders[0].Status
 	}
-	authHandler.setCPAAPIKeyProvider(cpaAPIKeyProvider)
 	requestLogDownloadTokens := newRequestLogDownloadTokenStore()
 
 	registerUsageEventRequestLogDownloadTokenRoutes(apiV1, requestLogProvider, requestLogDownloadTokens, statusConfig.CPARequestLogAccessEnabled)
 
 	versionProtected := apiV1.Group("")
-	versionProtected.Use(authHandler.roleMiddleware(auth.RoleAdmin, auth.RoleAPIKeyViewer))
+	versionProtected.Use(authHandler.adminMiddleware())
 	registerVersionRoutes(versionProtected)
 
 	adminProtected := apiV1.Group("")
@@ -143,25 +134,6 @@ func NewRouter(
 	registerCPAAPIKeyRoutes(adminProtected, cpaAPIKeyProvider)
 	registerPricingRoutes(adminProtected, pricingProvider)
 	registerQuotaRoutes(adminProtected, quotaProvider)
-	if rankingProvider != nil {
-		rankinghttpapi.RegisterRoutes(adminProtected, rankingProvider)
-	}
-	if localRankingProvider != nil {
-		rankinghttpapi.RegisterLocalRoutes(adminProtected, localRankingProvider)
-	}
-
-	keyViewerProtected := apiV1.Group("")
-	keyViewerProtected.Use(authHandler.apiKeyViewerMiddleware())
-	keyViewerProtected.Use(authHandler.activeAPIKeyViewerMiddleware())
-	registerKeyOverviewRoute(keyViewerProtected, usageProvider)
-	registerKeyActivityRoute(keyViewerProtected, usageProvider)
-	registerKeyUsageAnalysisRoute(keyViewerProtected, usageProvider)
-	if rankingProvider != nil {
-		rankinghttpapi.RegisterKeyViewerRoutes(keyViewerProtected, rankingProvider)
-	}
-	if authConfig.APIKeyViewerLocalRankingEnabled && localRankingProvider != nil {
-		rankinghttpapi.RegisterKeyViewerLocalRoutes(keyViewerProtected, localRankingProvider)
-	}
 
 	if staticFS != nil {
 		if indexFile, err := staticFS.Open("index.html"); err == nil {

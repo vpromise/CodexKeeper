@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"cpa-usage-keeper/internal/entities"
+	"cpa-usage-keeper/internal/providers"
 	"cpa-usage-keeper/internal/repository"
 	"cpa-usage-keeper/internal/timeutil"
+
 	"gorm.io/gorm"
 )
 
@@ -60,6 +62,10 @@ func (s *errorEventService) StoreErrorEvent(ctx context.Context, raw string, rec
 	if err != nil {
 		return err
 	}
+	if !providers.Supported(event.Provider) {
+		return nil
+	}
+	event.Provider = providers.Normalize(event.Provider)
 	return repository.InsertErrorEvent(ctx, s.db, &event)
 }
 

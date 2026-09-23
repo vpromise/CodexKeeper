@@ -59,12 +59,12 @@ describe('credential list preferences', () => {
     })
   })
 
-  it('rejects a provider filter that belongs to the other section', () => {
+  it('rejects removed provider filters', () => {
     // antigravity 只存在于 Auth 文件分区，AI 供应商恢复时必须回落到 all。
     expect(normalizeCredentialListPreferences('auth-files', {
       version: 1,
       providerFilter: 'antigravity',
-    }).providerFilter).toBe('antigravity')
+    }).providerFilter).toBe('all')
     expect(normalizeCredentialListPreferences('ai-provider', {
       version: 1,
       providerFilter: 'antigravity',
@@ -72,7 +72,7 @@ describe('credential list preferences', () => {
     expect(normalizeCredentialListPreferences('ai-provider', {
       version: 1,
       providerFilter: 'openai',
-    }).providerFilter).toBe('openai')
+    }).providerFilter).toBe('all')
   })
 
   it('resets everything when the stored version is missing or stale', () => {

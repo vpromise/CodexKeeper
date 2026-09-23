@@ -12,10 +12,10 @@ describe('AppFooter', () => {
     const html = renderToStaticMarkup(<AppFooter version="v1.2.3" />);
 
     expect(html).toContain(`href="${GITHUB_REPOSITORY_URL}"`);
-    expect(html).toContain('>CPA Usage Keeper</a>');
+    expect(html).toContain('>CodexKeeper</a>');
     expect(html).toContain('License');
     expect(html).toContain('CLIProxyAPI Integration');
-    expect(html).toContain('Powered By');
+    expect(html).toContain('Based on Keeper by');
     expect(html).toContain('aria-label="Willxup GitHub profile"');
     expect(html).toContain('Willxup');
     expect(html).toContain('Version: v1.2.3');

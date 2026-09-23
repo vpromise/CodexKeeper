@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"cpa-usage-keeper/internal/api"
 	"cpa-usage-keeper/internal/auth"
@@ -18,10 +18,10 @@ import (
 	"cpa-usage-keeper/internal/poller"
 	"cpa-usage-keeper/internal/pricing"
 	"cpa-usage-keeper/internal/quota"
-	"cpa-usage-keeper/internal/ranking"
 	"cpa-usage-keeper/internal/repository"
 	"cpa-usage-keeper/internal/service"
 	webui "cpa-usage-keeper/web"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -63,8 +63,6 @@ type App struct {
 	CPAErrors Runner
 	// UsageAggregation 是唯一串行调度三类派生聚合事务的后台 runner。
 	UsageAggregation  Runner
-	Ranking           Runner
-	LocalRanking      Runner
 	Maintenance       *StorageCleanupRunner
 	MetadataSync      *MetadataSyncRunner
 	QuotaService      QuotaRunner
@@ -124,6 +122,11 @@ func NewWithOptions(options Options) (*App, error) {
 }
 
 func NewWithConfig(cfg config.Config) (*App, error) {
+	if cfg.WorkDir != "" {
+		if err := os.MkdirAll(cfg.WorkDir, 0700); err != nil {
+			return nil, fmt.Errorf("create work directory: %w", err)
+		}
+	}
 	logCloser, err := logging.Configure(cfg)
 	if err != nil {
 		return nil, err
@@ -135,55 +138,12 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 	if err != nil {
 		return nil, failInitialization(logCloser, err)
 	}
-	// Ranking 完全复用现有 app_settings 和统一 DB；构造阶段不访问中心，默认 disabled 没有外部请求。
-	rankingService, err := ranking.NewService(ranking.NewStore(db), ranking.NewAggregator(db), ranking.NewClient())
-	if err != nil {
-		if readDB != db {
-			_ = closeGormDB(readDB)
-		}
-		_ = closeGormDB(db)
-		_ = logCloser.Close()
-		return nil, err
-	}
-	rankingRunner, err := ranking.NewRunner(rankingService)
-	if err != nil {
-		if readDB != db {
-			_ = closeGormDB(readDB)
-		}
-		_ = closeGormDB(db)
-		_ = logCloser.Close()
-		return nil, err
-	}
 	// 最近事件缓存继续使用统一 DB；其 Query 会由 dbresolver 自动路由到 reader。
 	recentUsageCache, err := newUsageRecentEventCache(db, repository.UsageRecentEventCacheOptions{})
 	if err != nil {
 		// 缓存初始化失败会让 realtime/最近边界降级到 DB，但不影响核心写入和查询能力。
 		logrus.WithError(err).Error("recent usage event cache initialization failed; falling back to database queries")
 		recentUsageCache = nil
-	}
-	localRankingService, err := ranking.NewLocalRankingService(db, ranking.LocalRankingServiceOptions{})
-	if err != nil {
-		if recentUsageCache != nil {
-			recentUsageCache.Close()
-		}
-		if readDB != db {
-			_ = closeGormDB(readDB)
-		}
-		_ = closeGormDB(db)
-		_ = logCloser.Close()
-		return nil, err
-	}
-	localRankingRunner, err := ranking.NewLocalRankingRunner(localRankingService)
-	if err != nil {
-		if recentUsageCache != nil {
-			recentUsageCache.Close()
-		}
-		if readDB != db {
-			_ = closeGormDB(readDB)
-		}
-		_ = closeGormDB(db)
-		_ = logCloser.Close()
-		return nil, err
 	}
 	pricingSnapshot, err := repository.LoadPricingSnapshot(context.Background(), db)
 	if err != nil {
@@ -219,7 +179,7 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 	})
 	// metadataSyncRunner 提前创建，保证控制消息和后台任务使用同一个调度器实例。
 	metadataSyncRunner := NewMetadataSyncRunner(syncService, cfg.MetadataSyncInterval)
-	// redisPullSource 负责 Redis batch pull，并在 usage/queue 两个 key 间做一次兼容探测。
+	// The backlog source uses the fixed current-protocol usage key.
 	redisPullSource := poller.NewRedisPullSource(cpa.RedisQueueOptions{
 		BaseURL:       cfg.CPABaseURL,
 		RedisAddr:     cfg.RedisQueueAddr,
@@ -229,8 +189,6 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 		TLS:           cfg.RedisQueueTLS,
 		TLSSkipVerify: cfg.TLSSkipVerify,
 	})
-	// httpPullSource 保持 HTTP usage queue 兜底路径不变。
-	httpPullSource := poller.NewHTTPPullSource(cfg.CPABaseURL, cfg.CPAManagementKey, cfg.RequestTimeout, cfg.TLSSkipVerify, cfg.RedisQueueBatchSize)
 	// redisSubscribeSource 保持 Redis SUBSCRIBE 优先路径不变。
 	redisSubscribeSource := poller.NewRedisSubscribeSource(poller.RedisSubscribeOptions{
 		BaseURL:       cfg.CPABaseURL,
@@ -243,12 +201,10 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 	// usage 通道可能混入 metadata 控制消息，落 inbox 前先过滤并转交 metadata runner。
 	// inbox writer 不再接收 queue key，来源由 runner 传入并写入 redis_usage_inboxes.source。
 	redisInboxWriter := poller.NewControlAwareRedisInboxWriter(poller.NewRedisInboxWriter(db), metadataSyncRunner)
-	// redisIngestRunner 继续负责三种 usage 拉取方式的选择和降级。
-	redisIngestRunner := poller.NewRedisIngestRunner(redisSubscribeSource, redisPullSource, httpPullSource, redisInboxWriter, poller.RedisIngestRunnerConfig{
-		IdleInterval:       cfg.RedisQueueIdleInterval,
-		BatchSize:          cfg.RedisQueueBatchSize,
-		HTTPBackoffInitial: time.Second,
-		HTTPBackoffMax:     30 * time.Second,
+	// The runner reconnects the native subscription and drains its backlog.
+	redisIngestRunner := poller.NewRedisIngestRunner(redisSubscribeSource, redisPullSource, redisInboxWriter, poller.RedisIngestRunnerConfig{
+		RetryInterval: cfg.RedisQueueRetryInterval,
+		BatchSize:     cfg.RedisQueueBatchSize,
 	})
 	// usage 链路一旦降级或失败，metadata 同步回到轮询，直到下一条 CPA 控制消息重新启用通知模式。
 	redisIngestRunner.SetControlMessageObserver(metadataSyncRunner)
@@ -318,13 +274,13 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 		sessionManager = auth.NewPersistentSessionManager(cfg.AuthSessionTTL, auth.NewGormSessionStore(db))
 	}
 	authConfig := api.AuthConfig{
-		Enabled:                         cfg.AuthEnabled,
-		LoginPassword:                   cfg.LoginPassword,
-		SessionTTL:                      cfg.AuthSessionTTL,
-		BasePath:                        cfg.AppBasePath,
-		FrameAncestorOrigins:            frameAncestorOrigins(cfg),
-		TrustedProxyCIDRs:               cfg.TrustedProxyCIDRs,
-		APIKeyViewerLocalRankingEnabled: cfg.APIKeyViewerLocalRankingEnabled,
+		Enabled:              cfg.AuthEnabled,
+		LoginPassword:        cfg.LoginPassword,
+		LoginPasswordHash:    cfg.LoginPasswordHash,
+		SessionTTL:           cfg.AuthSessionTTL,
+		BasePath:             cfg.AppBasePath,
+		FrameAncestorOrigins: frameAncestorOrigins(cfg),
+		TrustedProxyCIDRs:    cfg.TrustedProxyCIDRs,
 	}
 	authHandler := api.NewAuthHandler(authConfig, sessionManager)
 
@@ -340,8 +296,6 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 		RedisProcess:      redisProcessRunner,
 		CPAErrors:         redisErrorIngestRunner,
 		UsageAggregation:  usageAggregationRunner,
-		Ranking:           rankingRunner,
-		LocalRanking:      localRankingRunner,
 		Maintenance:       NewStorageCleanupRunner(syncService),
 		MetadataSync:      metadataSyncRunner,
 		QuotaService:      quotaService,
@@ -367,8 +321,6 @@ func NewWithConfig(cfg config.Config) (*App, error) {
 				// 认证文件与 AI 供应商共用一个 service，路由层按类型分发。
 				CredentialStatus: credentialStatusService,
 				RequestLogs:      requestLogService,
-				Ranking:          rankingService,
-				LocalRanking:     localRankingService,
 				Status: api.StatusRouteConfig{
 					CPAPublicURL:               cfg.CPAPublicURL,
 					CPARequestLogAccessEnabled: cfg.CPARequestLogAccessEnabled,
@@ -489,14 +441,6 @@ func (a *App) Run() error {
 			}
 		})
 	}
-	if a.Ranking != nil {
-		a.startBackgroundTask(func() {
-			// 排名中心故障只能终止本次可选同步任务，不能影响 Keeper HTTP 或 usage 采集。
-			if err := a.Ranking.Run(ctx); err != nil {
-				logrus.Errorf("ranking synchronization stopped: %v", err)
-			}
-		})
-	}
 	if a.Maintenance != nil {
 		a.startBackgroundTask(func() {
 			if err := a.Maintenance.Run(ctx); err != nil {
@@ -508,14 +452,6 @@ func (a *App) Run() error {
 		a.startBackgroundTask(func() {
 			if err := a.MetadataSync.Run(ctx); err != nil {
 				logrus.Errorf("metadata sync stopped: %v", err)
-			}
-		})
-	}
-	if a.LocalRanking != nil {
-		a.startBackgroundTask(func() {
-			// Metadata 已先启动；Local runner 再等待首个五分钟周期，让 usage 与 Key 信息完成启动追赶。
-			if err := a.LocalRanking.Run(ctx); err != nil {
-				logrus.Errorf("local ranking aggregation stopped: %v", err)
 			}
 		})
 	}

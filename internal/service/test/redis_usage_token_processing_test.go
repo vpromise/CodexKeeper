@@ -17,6 +17,7 @@ import (
 	repodto "cpa-usage-keeper/internal/repository/dto"
 	"cpa-usage-keeper/internal/service"
 	servicedto "cpa-usage-keeper/internal/service/dto"
+
 	"gorm.io/gorm"
 )
 
@@ -59,7 +60,7 @@ func TestProcessRedisUsageInboxKnownExecutorBypassesIdentityLookup(t *testing.T)
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{{
 		Source: "usage",
 		RawMessage: `{
-			"provider":"OpenAI",
+			"provider":"codex",
 			"auth_type":"api_key",
 			"auth_index":"missing-but-not-needed",
 			"model":"gpt-5.6",
@@ -256,12 +257,12 @@ func TestProcessRedisUsageInboxWaitsWhenFailureStatusCannotBeConfirmed(t *testin
 			_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{
 				{
 					Source:     "usage",
-					RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"OpenAI","auth_type":"api_key","auth_index":"ready-auth","model":"gpt-5.6","request_id":"uncertain-ready","executor_type":"CodexExecutor","tokens":{"input_tokens":10,"output_tokens":5,"total_tokens":15}}`,
+					RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"ready-auth","model":"gpt-5.6","request_id":"uncertain-ready","executor_type":"CodexExecutor","tokens":{"input_tokens":10,"output_tokens":5,"total_tokens":15}}`,
 					PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 				},
 				{
 					Source:     "usage",
-					RawMessage: `{"timestamp":"2026-07-14T08:00:01Z","provider":"Unknown","auth_type":"api_key","auth_index":"secret-uncertain","model":"future-model","request_id":"uncertain-future","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+					RawMessage: `{"timestamp":"2026-07-14T08:00:01Z","provider":"codex","auth_type":"api_key","auth_index":"secret-uncertain","model":"future-model","request_id":"uncertain-future","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 					PoppedAt:   time.Date(2026, 7, 14, 8, 0, 1, 0, time.UTC),
 				},
 			})

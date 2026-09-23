@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,45 +16,6 @@ import (
 	"cpa-usage-keeper/internal/cpa"
 	"cpa-usage-keeper/internal/poller"
 )
-
-//go:linkname redisPullQueueKeyCandidates cpa-usage-keeper/internal/poller.redisPullQueueKeyCandidates
-func redisPullQueueKeyCandidates() []string
-
-func TestRedisPullSourceFallsBackToLegacyQueueKeyAndReusesSelection(t *testing.T) {
-	addr, wait := newRedisPullScriptedServer(t, []redisPullExpectation{
-		{queueKey: cpa.ManagementUsageQueueKey, response: "-ERR unsupported channel 'usage'\r\n"},
-		{queueKey: cpa.ManagementUsageLegacyQueueKey, response: redisPullArrayResponse("legacy-one")},
-		{queueKey: cpa.ManagementUsageLegacyQueueKey, response: redisPullArrayResponse("legacy-two")},
-	})
-
-	source := poller.NewRedisPullSource(cpa.RedisQueueOptions{
-		RedisAddr:     addr,
-		ManagementKey: "secret",
-		Timeout:       time.Second,
-		BatchSize:     1,
-	})
-
-	messages, err := source.Pull(context.Background())
-	if err != nil {
-		t.Fatalf("first Pull returned error: %v", err)
-	}
-	if len(messages) != 1 || messages[0] != "legacy-one" {
-		t.Fatalf("unexpected first messages: %#v", messages)
-	}
-	if source.SourceName() != "redis_pull:queue" {
-		t.Fatalf("expected legacy source name redis_pull:queue, got %q", source.SourceName())
-	}
-
-	messages, err = source.Pull(context.Background())
-	if err != nil {
-		t.Fatalf("second Pull returned error: %v", err)
-	}
-	if len(messages) != 1 || messages[0] != "legacy-two" {
-		t.Fatalf("unexpected second messages: %#v", messages)
-	}
-
-	wait()
-}
 
 func TestRedisPullSourceLocksUsageQueueKeyAfterEmptySuccess(t *testing.T) {
 	addr, wait := newRedisPullScriptedServer(t, []redisPullExpectation{
@@ -155,39 +115,6 @@ func TestRedisPullSourceNameDoesNotWaitForSelectedPop(t *testing.T) {
 		t.Fatalf("second Pull returned error: %v", err)
 	}
 	wait()
-}
-
-func TestRedisPullSourceStopsAfterTwoUnsupportedQueueKeyAttempts(t *testing.T) {
-	addr, wait := newRedisPullScriptedServer(t, []redisPullExpectation{
-		{queueKey: cpa.ManagementUsageQueueKey, response: "-ERR unsupported channel 'usage'\r\n"},
-		{queueKey: cpa.ManagementUsageLegacyQueueKey, response: "-ERR unsupported channel 'queue'\r\n"},
-	})
-
-	source := poller.NewRedisPullSource(cpa.RedisQueueOptions{
-		RedisAddr:     addr,
-		ManagementKey: "secret",
-		Timeout:       time.Second,
-		BatchSize:     1,
-	})
-
-	_, err := source.Pull(context.Background())
-	if err == nil {
-		t.Fatal("expected Pull to return error")
-	}
-	errorText := err.Error()
-	if !strings.Contains(errorText, "usage") || !strings.Contains(errorText, "queue") {
-		t.Fatalf("expected joined error to include both attempted keys, got %q", errorText)
-	}
-
-	wait()
-}
-
-func TestRedisPullQueueKeyCandidatesAreUsageThenQueue(t *testing.T) {
-	got := redisPullQueueKeyCandidates()
-	want := []string{cpa.ManagementUsageQueueKey, cpa.ManagementUsageLegacyQueueKey}
-	if !slices.Equal(got, want) {
-		t.Fatalf("redisPullQueueKeyCandidates() = %#v, want %#v", got, want)
-	}
 }
 
 type redisPullExpectation struct {

@@ -36,30 +36,9 @@ func TestPasswordLoginCannotBypassAttemptLimitWithCorrectPassword(t *testing.T) 
 	}
 }
 
-func TestAPIKeyLoginDoesNotQueryProviderWhenAttemptLimitIsReached(t *testing.T) {
-	provider := &countingCPAAPIKeyProvider{findErr: errors.New("not found")}
-	router := newLoginSecurityRouter(provider)
-	remoteAddr := "198.51.100.22:1234"
-	for index := 0; index < 5; index++ {
-		response := performLoginRequest(router, "/api/v1/auth/api-key-login", `{"apiKey":"missing"}`, remoteAddr)
-		if response.Code != http.StatusUnauthorized || !strings.Contains(response.Body.String(), "invalid credentials") {
-			t.Fatalf("failed attempt %d: expected 401, got %d", index+1, response.Code)
-		}
-	}
-
-	response := performLoginRequest(router, "/api/v1/auth/api-key-login", `{"apiKey":"still-missing"}`, remoteAddr)
-	if response.Code != http.StatusTooManyRequests {
-		t.Fatalf("expected API key login to be rate limited, got %d", response.Code)
-	}
-	if provider.findCalls != 5 {
-		t.Fatalf("expected the provider not to be queried after limiting, got %d calls", provider.findCalls)
-	}
-}
-
 func TestUnauthenticatedLoginEndpointsRejectBodiesLargerThanFourKiB(t *testing.T) {
 	for _, endpoint := range []struct{ name, path, field string }{
 		{"password", "/api/v1/auth/login", "password"},
-		{"api key", "/api/v1/auth/api-key-login", "apiKey"},
 	} {
 		for _, chunked := range []bool{false, true} {
 			t.Run(endpoint.name+"/chunked="+strconv.FormatBool(chunked), func(t *testing.T) {
@@ -86,7 +65,7 @@ func TestUnauthenticatedLoginLimitsRunBeforeRequestIntentCheck(t *testing.T) {
 		path     string
 	}{
 		{name: "password login", path: "/api/v1/auth/login"},
-		{name: "API key login with base path", basePath: "/cpa", path: "/cpa/api/v1/auth/api-key-login"},
+		{name: "API key login with base path", basePath: "/cpa", path: "/cpa/api/v1/auth/login"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			router := newLoginSecurityRouterWithBasePath(nil, testCase.basePath)

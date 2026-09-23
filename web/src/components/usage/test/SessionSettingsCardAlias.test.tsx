@@ -49,10 +49,10 @@ const sessions: AuthManagedSessionItem[] = [
   },
   {
     id: 'viewer-session',
-    kind: 'api_key',
-    role: 'api_key_viewer',
+    kind: 'admin',
+    role: 'admin',
     source: 'embed',
-    label: 'Team Key',
+    alias: 'Embedded Admin',
   },
 ]
 
@@ -98,7 +98,7 @@ describe('SessionSettingsCard admin alias editor', () => {
     const currentIndicator = container.querySelector<HTMLElement>('[data-session-current="true"]')
     const currentDot = container.querySelector<HTMLElement>('[data-session-current-dot="true"]')
     expect(editButton).not.toBeNull()
-    expect(container.querySelectorAll('button[aria-label="Edit session alias"]')).toHaveLength(1)
+    expect(container.querySelectorAll('button[aria-label="Edit session alias"]')).toHaveLength(2)
     expect(currentIndicator!.textContent).toBe('In use')
     expect(currentDot!.getAttribute('aria-hidden')).toBe('true')
     expect(currentIndicator!.parentElement!.querySelector('button[aria-label="Sign out this session"]')).toBeNull()

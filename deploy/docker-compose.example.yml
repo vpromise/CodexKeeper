@@ -1,12 +1,27 @@
+# Run from the repository root:
+# docker compose --project-directory . -f deploy/docker-compose.example.yml up -d --build
 services:
-  cpa-usage-keeper:
-    image: ghcr.io/willxup/cpa-usage-keeper:latest
+  codexkeeper:
+    build:
+      context: .
+    image: local/codexkeeper:latest
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     env_file:
       - .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      WORK_DIR: /data
+      CPA_BASE_URL: http://cpa:8317
+      REDIS_QUEUE_ADDR: cpa:8317
     volumes:
       - ./data:/data
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${CPA_DOCKER_NETWORK:-sub2api-production_default}

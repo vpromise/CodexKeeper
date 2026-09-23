@@ -52,37 +52,6 @@ func TestNonClaudeCacheAliasKeepsExistingOneWayFallback(t *testing.T) {
 	}
 }
 
-func TestGeminiAndOpenAICompatibilityKeepNonClaudeCacheAlias(t *testing.T) {
-	// Gemini 与 OpenAI Compatibility 各自调用共享 cache alias；两种证据来源都要保护旧 cached→read 规则。
-	tests := []struct {
-		name       string
-		resolution tokenprocessor.HandlerResolution
-	}{
-		{name: "Gemini executor", resolution: mustResolveExecutor(t, "GeminiExecutor")},
-		{name: "Gemini identity", resolution: mustResolveIdentity(t, "", "gemini")},
-		{name: "OpenAI compatibility executor", resolution: mustResolveExecutor(t, "OpenAICompatExecutor")},
-		{name: "OpenAI compatibility identity", resolution: mustResolveIdentity(t, "", "openai")},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result := tokenprocessor.Process(tokenprocessor.TokenValues{
-				InputTokens:         100,
-				OutputTokens:        20,
-				CachedTokens:        30,
-				CacheCreationTokens: 10,
-				TotalTokens:         120,
-			}, test.resolution)
-			if result.Tokens.CachedTokens != 30 || result.Tokens.CacheReadTokens != 30 || result.Tokens.CacheCreationTokens != 10 {
-				t.Fatalf("expected cached tokens to backfill read while preserving creation, got %+v", result.Tokens)
-			}
-			if !hasAction(result, tokenprocessor.ActionBackfillCacheReadAlias) {
-				t.Fatalf("expected cache read compatibility action, got %+v", result.Actions)
-			}
-		})
-	}
-}
-
 func TestNonClaudeCacheAliasRejectsReadClampedToZero(t *testing.T) {
 	// raw read=-1 被 clamp 成零不等于“显式 read 缺失”；cached 不能借这个伪零值覆盖损坏字段。
 	result := tokenprocessor.Process(tokenprocessor.TokenValues{InputTokens: 100, OutputTokens: 20, CachedTokens: 30, CacheReadTokens: -1, TotalTokens: 120}, mustResolveExecutor(t, "CodexExecutor"))

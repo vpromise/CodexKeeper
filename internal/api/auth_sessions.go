@@ -3,23 +3,19 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"cpa-usage-keeper/internal/auth"
-	"cpa-usage-keeper/internal/entities"
-	"cpa-usage-keeper/internal/helper"
 	"cpa-usage-keeper/internal/timeutil"
+
 	"github.com/gin-gonic/gin"
 )
 
 const (
 	authSessionKindAdmin  = "admin"
-	authSessionKindAPIKey = "api_key"
 	authSessionTimeLayout = "2006/01/02 15:04:05"
 )
 
@@ -40,9 +36,6 @@ type authSessionItemResponse struct {
 	LastSeenIP  string    `json:"lastSeenIp,omitempty"`
 	UserAgent   string    `json:"userAgent,omitempty"`
 	Alias       *string   `json:"alias,omitempty"`
-	APIKeyID    string    `json:"apiKeyId,omitempty"`
-	Label       string    `json:"label,omitempty"`
-	DisplayKey  string    `json:"displayKey,omitempty"`
 	sortSeenAt  time.Time `json:"-"`
 	sortLoginAt time.Time `json:"-"`
 }
@@ -59,11 +52,7 @@ func (h *authHandler) listManagedSessions(c *gin.Context) {
 		return
 	}
 	records := h.sessions.List()
-	apiKeysByID, ok := h.sessionAPIKeysByID(c)
-	if !ok {
-		return
-	}
-	c.JSON(http.StatusOK, authSessionListResponse{Items: buildAuthSessionItems(records, apiKeysByID, currentAuthSessionHash(c))})
+	c.JSON(http.StatusOK, authSessionListResponse{Items: buildAuthSessionItems(records, currentAuthSessionHash(c))})
 }
 
 func (h *authHandler) updateManagedSessionAlias(c *gin.Context) {
@@ -84,7 +73,7 @@ func (h *authHandler) updateManagedSessionAlias(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
-	items := buildAuthSessionItems(h.sessions.List(), nil, currentAuthSessionHash(c))
+	items := buildAuthSessionItems(h.sessions.List(), currentAuthSessionHash(c))
 	for _, item := range items {
 		if item.ID == sessionID {
 			c.JSON(http.StatusOK, item)
@@ -115,23 +104,7 @@ func (h *authHandler) revokeManagedSession(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *authHandler) sessionAPIKeysByID(c *gin.Context) (map[int64]entities.CPAAPIKey, bool) {
-	rowsByID := map[int64]entities.CPAAPIKey{}
-	if h == nil || h.cpaAPIKeyProvider == nil {
-		return rowsByID, true
-	}
-	rows, err := h.cpaAPIKeyProvider.ListCPAAPIKeys(c.Request.Context())
-	if err != nil {
-		writeInternalError(c, "list api keys for auth sessions failed", err)
-		return nil, false
-	}
-	for _, row := range rows {
-		rowsByID[row.ID] = row
-	}
-	return rowsByID, true
-}
-
-func buildAuthSessionItems(records []auth.SessionRecord, apiKeysByID map[int64]entities.CPAAPIKey, currentTokenHash string) []authSessionItemResponse {
+func buildAuthSessionItems(records []auth.SessionRecord, currentTokenHash string) []authSessionItemResponse {
 	items := make([]authSessionItemResponse, 0, len(records))
 
 	for _, record := range records {
@@ -149,15 +122,6 @@ func buildAuthSessionItems(records []auth.SessionRecord, apiKeysByID map[int64]e
 			items = append(items, base)
 			continue
 		}
-		if record.Role != auth.RoleAPIKeyViewer {
-			continue
-		}
-		label, displayKey := apiKeySessionDisplay(record.CPAAPIKeyID, apiKeysByID)
-		base.Kind = authSessionKindAPIKey
-		base.APIKeyID = strconv.FormatInt(record.CPAAPIKeyID, 10)
-		base.Label = label
-		base.DisplayKey = displayKey
-		items = append(items, base)
 	}
 
 	sort.SliceStable(items, func(i, j int) bool {
@@ -223,12 +187,4 @@ func formatAuthSessionTime(value time.Time) string {
 		return ""
 	}
 	return timeutil.NormalizeStorageTime(value).Format(authSessionTimeLayout)
-}
-
-func apiKeySessionDisplay(apiKeyID int64, apiKeysByID map[int64]entities.CPAAPIKey) (string, string) {
-	if row, ok := apiKeysByID[apiKeyID]; ok {
-		return helper.CPAAPIKeyDisplayName(row), helper.CPAAPIKeyMaskedDisplayKey(row)
-	}
-	fallback := fmt.Sprintf("Unknown API Key #%d", apiKeyID)
-	return fallback, fallback
 }

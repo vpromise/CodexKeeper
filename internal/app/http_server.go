@@ -6,6 +6,7 @@ import (
 
 	"cpa-usage-keeper/internal/config"
 	"cpa-usage-keeper/internal/logging"
+
 	"github.com/sirupsen/logrus"
 )
 

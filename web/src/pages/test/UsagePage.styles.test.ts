@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 const readSource = (url: URL) => readFileSync(url, 'utf8').replace(/\r\n/g, '\n')
 
 const usagePageStyles = readSource(new URL('../UsagePage.module.scss', import.meta.url))
-const keyOverviewPageStyles = readSource(new URL('../../features/key-viewer/KeyViewerShell.module.scss', import.meta.url))
 const priceRulesStyles = readSource(new URL('../../components/usage/pricing/PriceRulesModal.module.scss', import.meta.url))
 const credentialStyles = readSource(new URL('../../components/usage/credentials/CredentialSections.module.scss', import.meta.url))
 const analysisPanelStyles = readSource(new URL('../../components/usage/analysis/AnalysisPanel.module.scss', import.meta.url))
@@ -36,13 +35,13 @@ const relativeLuminance = (hex: string) => {
 
 describe('UsagePage responsive layout and accessibility', () => {
   it('lets dashboard page frames consume the mode-specific width cap', () => {
-    for (const source of [usagePageStyles, keyOverviewPageStyles]) {
+    for (const source of [usagePageStyles]) {
       expect(styleRuleBlock(source, '.pageFrame')).toContain('width: min(var(--keeper-page-max-width, 1245px), 100%);')
     }
   })
 
   it('fills the available viewport consistently before the shared footer', () => {
-    for (const pageStyles of [usagePageStyles, keyOverviewPageStyles]) {
+    for (const pageStyles of [usagePageStyles]) {
       const shell = styleRuleBlock(pageStyles, '.pageShell')
       const frame = styleRuleBlock(pageStyles, '.pageFrame')
       const content = styleRuleBlock(pageStyles, '.contentColumn')
@@ -161,8 +160,8 @@ describe('UsagePage responsive layout and accessibility', () => {
 
   it('keeps inactive toolbar controls inert while Refresh stays outside the collapsing slot', () => {
     expect(styleRuleBlock(usagePageStyles, '.toolbarActionsRightAnimated')).toContain('grid-template-columns: minmax(0, 1fr) auto;')
-    expect(styleRuleBlock(usagePageStyles, '.usageFilterTransition,\n.rankingScopeTransition')).toContain('max-width: 0;')
-    expect(styleRuleBlock(usagePageStyles, '.usageFilterTransitionInner,\n.rankingScopeTransitionInner')).toContain('overflow: hidden;')
+    expect(styleRuleBlock(usagePageStyles, '.usageFilterTransition')).toContain('max-width: 0;')
+    expect(styleRuleBlock(usagePageStyles, '.usageFilterTransitionInner')).toContain('overflow: hidden;')
     expect(styleRuleBlock(usagePageStyles, '.usageRefreshSlot')).toContain('flex: 0 0 auto;')
     expect(usagePageStyles).toMatch(/@include mobile\s*\{[\s\S]*?\.usageFilterTransitionOpen\s*\{[^}]*max-width:\s*100%;/)
   })
@@ -171,7 +170,7 @@ describe('UsagePage responsive layout and accessibility', () => {
     const reducedMotionStart = usagePageStyles.indexOf('@media (prefers-reduced-motion: reduce)')
     const mobileStart = usagePageStyles.lastIndexOf('@include mobile {', reducedMotionStart)
     const mobileStyles = usagePageStyles.slice(mobileStart, reducedMotionStart)
-    expect(mobileStyles).toMatch(/\.toolbarActionsRightAnimated \.usageFilterTransition,\s*\.toolbarActionsRightAnimated \.rankingScopeTransition\s*\{[^}]*max-height:\s*0;/)
+    expect(mobileStyles).toMatch(/\.toolbarActionsRightAnimated \.usageFilterTransition\s*\{[^}]*max-height:\s*0;/)
     expect(mobileStyles).toMatch(/\.toolbarActionsRightAnimated \.usageFilterTransitionOpen\s*\{[^}]*max-height:\s*280px;/)
   })
 

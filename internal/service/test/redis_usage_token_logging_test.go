@@ -15,6 +15,7 @@ import (
 	"cpa-usage-keeper/internal/repository"
 	repodto "cpa-usage-keeper/internal/repository/dto"
 	"cpa-usage-keeper/internal/service"
+
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -26,17 +27,17 @@ func TestMixedBatchDoesNotWarnBeforeUnknownExecutorIsDiscarded(t *testing.T) {
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"OpenAI","auth_type":"api_key","auth_index":"secret-ready","model":"gpt-5.6","request_id":"mixed-ready","executor_type":"CodexExecutor","tokens":{"input_tokens":10,"output_tokens":5,"total_tokens":15}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"secret-ready","model":"gpt-5.6","request_id":"mixed-ready","executor_type":"CodexExecutor","tokens":{"input_tokens":10,"output_tokens":5,"total_tokens":15}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:01Z","provider":"Unknown","auth_type":"api_key","auth_index":"secret-future","model":"future-model","request_id":"mixed-future","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:01Z","provider":"codex","auth_type":"api_key","auth_index":"secret-future","model":"future-model","request_id":"mixed-future","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 1, 0, time.UTC),
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:02Z","provider":"Unknown","auth_type":"api_key","auth_index":"secret-placeholder","model":"legacy-model","request_id":"mixed-placeholder","executor_type":"unknown","tokens":{"input_tokens":13,"output_tokens":5,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:02Z","provider":"codex","auth_type":"api_key","auth_index":"secret-placeholder","model":"legacy-model","request_id":"mixed-placeholder","executor_type":"unknown","tokens":{"input_tokens":13,"output_tokens":5,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 2, 0, time.UTC),
 		},
 	})
@@ -66,7 +67,7 @@ func TestUnknownExecutorOnlyWarnsAfterConfirmedDiscard(t *testing.T) {
 	registerTokenIdentityTypeLookupCallback(t, db, lookupErr)
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{{
 		Source:     "usage",
-		RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"Unknown","auth_type":"api_key","auth_index":"secret-retry","model":"future-model","request_id":"discarded-future","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+		RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"secret-retry","model":"future-model","request_id":"discarded-future","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 		PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 	}})
 	if err != nil {
@@ -96,7 +97,7 @@ func TestTokenAttentionLogsOnlyAfterCommittedTransaction(t *testing.T) {
 	db := openUsageServiceTestDatabase(t)
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{{
 		Source:     "usage",
-		RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"OpenAI","auth_type":"api_key","auth_index":"commit-gate","model":"gpt-5.6","request_id":"uncommitted-correction","executor_type":"CodexExecutor","tokens":{"input_tokens":100,"output_tokens":20,"reasoning_tokens":5,"total_tokens":125}}`,
+		RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"commit-gate","model":"gpt-5.6","request_id":"uncommitted-correction","executor_type":"CodexExecutor","tokens":{"input_tokens":100,"output_tokens":20,"reasoning_tokens":5,"total_tokens":125}}`,
 		PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 	}})
 	if err != nil {
@@ -122,17 +123,17 @@ func TestSuccessfulMissingIdentityFallbackKeepsOneWarningPerEvent(t *testing.T) 
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"Unknown","auth_type":"api_key","auth_index":"missing-empty","model":"empty-model","request_id":"missing-empty-executor","executor_type":"","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"missing-empty","model":"empty-model","request_id":"missing-empty-executor","executor_type":"","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:01Z","provider":"Unknown","auth_type":"api_key","auth_index":"missing-placeholder","model":"placeholder-model","request_id":"missing-placeholder-executor","executor_type":"unknown","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:01Z","provider":"codex","auth_type":"api_key","auth_index":"missing-placeholder","model":"placeholder-model","request_id":"missing-placeholder-executor","executor_type":"unknown","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 1, 0, time.UTC),
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:02Z","provider":"Unknown","auth_type":"api_key","auth_index":"missing-future","model":"future-model","request_id":"missing-future-executor","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:02Z","provider":"codex","auth_type":"api_key","auth_index":"missing-future","model":"future-model","request_id":"missing-future-executor","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 2, 0, time.UTC),
 		},
 	})
@@ -162,7 +163,7 @@ func TestProcessRedisUsageInboxLogsTokenSummaryAndOnlyExceptionalEvents(t *testi
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"OpenAI","auth_type":"api_key","auth_index":"secret-corrected","model":"gpt-5.6","request_id":"log-corrected","executor_type":"CodexExecutor","tokens":{"input_tokens":100,"output_tokens":20,"reasoning_tokens":5,"total_tokens":125}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"secret-corrected","model":"gpt-5.6","request_id":"log-corrected","executor_type":"CodexExecutor","tokens":{"input_tokens":100,"output_tokens":20,"reasoning_tokens":5,"total_tokens":125}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 		},
 		{
@@ -172,17 +173,17 @@ func TestProcessRedisUsageInboxLogsTokenSummaryAndOnlyExceptionalEvents(t *testi
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:02Z","provider":"Compatibility","auth_type":"api_key","auth_index":"secret-compatibility","model":"gemini-2.5-pro","request_id":"log-compatibility","executor_type":"OpenAICompatExecutor","tokens":{"input_tokens":1000,"output_tokens":20,"reasoning_tokens":50,"total_tokens":1070}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:02Z","provider":"codex","auth_type":"api_key","auth_index":"secret-compatibility","model":"gpt-5","request_id":"log-compatibility","executor_type":"CodexExecutor","tokens":{"input_tokens":1000,"output_tokens":20,"cached_tokens":50,"total_tokens":1020}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 2, 0, time.UTC),
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:03Z","provider":"Unknown","auth_type":"api_key","auth_index":"secret-unknown","raw_secret_marker":"sk-raw-payload-only-marker","model":"future-model","request_id":"log-unknown","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:03Z","provider":"codex","auth_type":"api_key","auth_index":"secret-unknown","raw_secret_marker":"sk-raw-payload-only-marker","model":"future-model","request_id":"log-unknown","executor_type":"FutureExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 3, 0, time.UTC),
 		},
 		{
 			Source:     "usage",
-			RawMessage: `{"timestamp":"2026-07-14T08:00:04Z","provider":"Unknown","auth_type":"api_key","auth_index":"secret-cpa-unknown","model":"legacy-model","request_id":"log-cpa-unknown","executor_type":"unknown","tokens":{"input_tokens":13,"output_tokens":5,"total_tokens":18}}`,
+			RawMessage: `{"timestamp":"2026-07-14T08:00:04Z","provider":"codex","auth_type":"api_key","auth_index":"secret-cpa-unknown","model":"legacy-model","request_id":"log-cpa-unknown","executor_type":"unknown","tokens":{"input_tokens":13,"output_tokens":5,"total_tokens":18}}`,
 			PoppedAt:   time.Date(2026, 7, 14, 8, 0, 4, 0, time.UTC),
 		},
 	})
@@ -214,7 +215,7 @@ func TestProcessRedisUsageInboxLogsTokenSummaryAndOnlyExceptionalEvents(t *testi
 		t.Fatalf("unexpected token outcome counts: %+v", summary.OutcomeCounts)
 	}
 	actions := summary.ActionCounts
-	if actions["correct_nonzero_total"] != 1 || actions["apply_issue272_reasoning_fold"] != 1 {
+	if actions["correct_nonzero_total"] != 1 || actions["backfill_cache_read_alias"] != 1 {
 		t.Fatalf("unexpected token action counts: %+v", summary.ActionCounts)
 	}
 
@@ -232,7 +233,7 @@ func TestTokenBatchSummaryRemainsDebugOnly(t *testing.T) {
 	db := openUsageServiceTestDatabase(t)
 	_, err := repository.InsertRedisUsageInboxMessages(db, []repodto.RedisInboxInsert{{
 		Source:     "usage",
-		RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"OpenAI","auth_type":"api_key","auth_index":"summary-info","model":"gpt-5.6","request_id":"summary-info-event","executor_type":"CodexExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
+		RawMessage: `{"timestamp":"2026-07-14T08:00:00Z","provider":"codex","auth_type":"api_key","auth_index":"summary-info","model":"gpt-5.6","request_id":"summary-info-event","executor_type":"CodexExecutor","tokens":{"input_tokens":11,"output_tokens":7,"total_tokens":18}}`,
 		PoppedAt:   time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC),
 	}})
 	if err != nil {

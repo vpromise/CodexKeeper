@@ -7,11 +7,7 @@ import styles from './CredentialSections.module.scss'
 // 只有这六类 AI 供应商能用 excluded-models 的精确 "*" 整条停用，OpenAI 兼容不支持。
 const STATUS_TOGGLE_PROVIDER_TYPES = new Set([
   'codex',
-  'xai',
-  'gemini',
-  'gemini-interactions',
   'claude',
-  'vertex',
 ])
 
 export function isCredentialStatusToggleSupported(providerType: string | null | undefined): boolean {

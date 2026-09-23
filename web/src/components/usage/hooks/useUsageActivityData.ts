@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError, fetchKeyActivity, fetchUsageActivity } from '@/lib/api';
+import { ApiError, fetchUsageActivity } from '@/lib/api';
 import type { UsageActivityRequest, UsageActivityResponse, UsageTimeRange } from '@/lib/types';
 
 export interface UseUsageActivityDataOptions {
-  viewer: 'admin' | 'key';
+  viewer: 'admin';
   request: UsageActivityRequest;
   apiKeyId?: string;
   enabled?: boolean;
@@ -36,7 +36,7 @@ export function useUsageActivityData({
   enabled = true,
   onAuthRequired,
 }: UseUsageActivityDataOptions): UseUsageActivityDataReturn {
-  const normalizedAPIKeyID = viewer === 'admin' ? apiKeyId?.trim() ?? '' : '';
+  const normalizedAPIKeyID = apiKeyId?.trim() ?? '';
   const requestWindow = 'window' in request ? request.window : undefined;
   const requestRange = 'range' in request ? request.range : undefined;
   const requestUnit = 'range' in request ? request.unit : undefined;
@@ -83,9 +83,7 @@ export function useUsageActivityData({
     setErrorQueryKey('');
     activeRequest.promise = (async () => {
       try {
-        const next = viewer === 'key'
-          ? await fetchKeyActivity({ request: normalizedRequest, signal: controller.signal })
-          : await fetchUsageActivity({ request: normalizedRequest, apiKeyId: normalizedAPIKeyID, signal: controller.signal });
+        const next = await fetchUsageActivity({ request: normalizedRequest, apiKeyId: normalizedAPIKeyID, signal: controller.signal });
         if (activeRequestRef.current !== activeRequest) return;
         setResponse(next);
         setResponseQueryKey(queryKey);
@@ -108,7 +106,7 @@ export function useUsageActivityData({
       }
     })();
     return activeRequest.promise;
-  }, [normalizedAPIKeyID, normalizedRequest, onAuthRequired, queryKey, queryScope, viewer]);
+  }, [normalizedAPIKeyID, normalizedRequest, onAuthRequired, queryKey, queryScope]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -6,24 +6,10 @@ import (
 	"cpa-usage-keeper/internal/cpa/dto/response"
 )
 
-// Fetcher 汇总八个 provider metadata endpoint，service 通过这一接口注入真实 CPA client 或测试替身。
+// Fetcher reads only the native Codex and Claude credentials.
 type Fetcher interface {
-	// FetchCodexAPIKeys 读取 Codex API Key metadata。
 	FetchCodexAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchXAIAPIKeys 读取 xAI API Key metadata。
-	FetchXAIAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchGeminiAPIKeys 读取普通 Gemini API Key metadata。
-	FetchGeminiAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchInteractionsAPIKeys 读取 Gemini Interactions API Key metadata。
-	FetchInteractionsAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchClaudeAPIKeys 读取 Claude API Key metadata。
 	FetchClaudeAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchVertexAPIKeys 读取 Vertex API Key metadata。
-	FetchVertexAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchMetaAPIKeys 读取 Meta API Key metadata。
-	FetchMetaAPIKeys(context.Context) (*response.ProviderKeyConfigResult, error)
-	// FetchOpenAICompatibility 读取 OpenAI Compatibility provider 与多 key metadata。
-	FetchOpenAICompatibility(context.Context) (*response.OpenAICompatibilityResult, error)
 }
 
 // Credential 是 provider endpoint 归一化后的纯 metadata，不依赖数据库实体。

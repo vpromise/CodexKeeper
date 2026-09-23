@@ -79,24 +79,6 @@ type QuotaRow struct {
 	WindowUsageCost   *float64     `json:"window_usage_cost,omitempty"`
 }
 
-type AntigravityQuotaBucket struct {
-	BucketID          string   `json:"bucketId,omitempty"`
-	DisplayName       string   `json:"displayName,omitempty"`
-	Window            string   `json:"window,omitempty"`
-	RemainingFraction *float64 `json:"remainingFraction,omitempty"`
-	ResetTime         string   `json:"resetTime,omitempty"`
-}
-
-type AntigravityQuotaGroup struct {
-	DisplayName string                   `json:"displayName,omitempty"`
-	Description string                   `json:"description,omitempty"`
-	Buckets     []AntigravityQuotaBucket `json:"buckets,omitempty"`
-}
-
-type AntigravityQuotaPayload struct {
-	Groups []AntigravityQuotaGroup `json:"groups,omitempty"`
-}
-
 type CodexUsageWindow struct {
 	// UsedPercent 是上游返回的已用小数百分比；零值只有 HasUsedPercent=true 时才是明确事实。
 	UsedPercent float64 `json:"usedPercent,omitempty"`
@@ -152,40 +134,6 @@ type CodexUsagePayload struct {
 	RateLimitResetCredits *CodexRateLimitResetCredits `json:"rateLimitResetCredits,omitempty"`
 }
 
-type GeminiCliQuotaBucket struct {
-	ModelID           string  `json:"modelId,omitempty"`
-	TokenType         string  `json:"tokenType,omitempty"`
-	RemainingFraction float64 `json:"remainingFraction,omitempty"`
-	RemainingAmount   float64 `json:"remainingAmount,omitempty"`
-	ResetTime         string  `json:"resetTime,omitempty"`
-}
-
-type GeminiCliQuotaPayload struct {
-	Buckets []GeminiCliQuotaBucket `json:"buckets,omitempty"`
-}
-
-type GeminiCliCredits struct {
-	CreditType   string  `json:"creditType,omitempty"`
-	CreditAmount float64 `json:"creditAmount,omitempty"`
-}
-
-type GeminiCliUserTier struct {
-	ID               string             `json:"id,omitempty"`
-	Name             string             `json:"name,omitempty"`
-	Description      string             `json:"description,omitempty"`
-	AvailableCredits []GeminiCliCredits `json:"availableCredits,omitempty"`
-}
-
-type GeminiCLICodeAssistPayload struct {
-	CurrentTier *GeminiCliUserTier `json:"currentTier,omitempty"`
-	PaidTier    *GeminiCliUserTier `json:"paidTier,omitempty"`
-}
-
-type AntigravitySubscriptionPayload struct {
-	CurrentTier *GeminiCliUserTier `json:"currentTier,omitempty"`
-	PaidTier    *GeminiCliUserTier `json:"paidTier,omitempty"`
-}
-
 type ClaudeUsageWindow struct {
 	Utilization float64 `json:"utilization,omitempty"`
 	ResetsAt    string  `json:"resetsAt,omitempty"`
@@ -233,113 +181,13 @@ type ClaudeProfileResponse struct {
 	Organization *ClaudeProfileOrganization `json:"organization,omitempty"`
 }
 
-type KimiUsageDetail struct {
-	Used      float64 `json:"used,omitempty"`
-	Limit     float64 `json:"limit,omitempty"`
-	Remaining float64 `json:"remaining,omitempty"`
-	Name      string  `json:"name,omitempty"`
-	Title     string  `json:"title,omitempty"`
-	ResetAt   string  `json:"resetAt,omitempty"`
-	ResetIn   float64 `json:"resetIn,omitempty"`
-	TTL       float64 `json:"ttl,omitempty"`
-}
-
-type KimiLimitWindow struct {
-	Duration int64  `json:"duration,omitempty"`
-	TimeUnit string `json:"timeUnit,omitempty"`
-}
-
-type KimiLimitItem struct {
-	Name      string           `json:"name,omitempty"`
-	Title     string           `json:"title,omitempty"`
-	Scope     string           `json:"scope,omitempty"`
-	Detail    *KimiUsageDetail `json:"detail,omitempty"`
-	Window    *KimiLimitWindow `json:"window,omitempty"`
-	Used      float64          `json:"used,omitempty"`
-	Limit     float64          `json:"limit,omitempty"`
-	Remaining float64          `json:"remaining,omitempty"`
-	Duration  int64            `json:"duration,omitempty"`
-	TimeUnit  string           `json:"timeUnit,omitempty"`
-	ResetAt   string           `json:"resetAt,omitempty"`
-	ResetIn   float64          `json:"resetIn,omitempty"`
-	TTL       float64          `json:"ttl,omitempty"`
-}
-
-type KimiUsagePayload struct {
-	Usage  *KimiUsageDetail `json:"usage,omitempty"`
-	Limits []KimiLimitItem  `json:"limits,omitempty"`
-}
-
-type XAIMoneyValue struct {
-	Val *float64 `json:"val,omitempty"`
-}
-
-type XAIBillingPeriod struct {
-	Type  string `json:"type,omitempty"`
-	Start string `json:"start,omitempty"`
-	End   string `json:"end,omitempty"`
-}
-
-type XAIBillingProductUsage struct {
-	Product      string   `json:"product,omitempty"`
-	UsagePercent *float64 `json:"usagePercent,omitempty"`
-}
-
-type XAIBillingCycle struct {
-	Year  int64 `json:"year,omitempty"`
-	Month int64 `json:"month,omitempty"`
-}
-
-type XAIBillingHistoryItem struct {
-	BillingCycle XAIBillingCycle `json:"billingCycle,omitempty"`
-	IncludedUsed XAIMoneyValue   `json:"includedUsed,omitempty"`
-	OnDemandUsed XAIMoneyValue   `json:"onDemandUsed,omitempty"`
-	TotalUsed    XAIMoneyValue   `json:"totalUsed,omitempty"`
-}
-
-type XAIBillingConfig struct {
-	CurrentPeriod      *XAIBillingPeriod        `json:"currentPeriod,omitempty"`
-	CreditUsagePercent *float64                 `json:"creditUsagePercent,omitempty"`
-	ProductUsage       []XAIBillingProductUsage `json:"productUsage,omitempty"`
-	MonthlyLimit       XAIMoneyValue            `json:"monthlyLimit,omitempty"`
-	Used               XAIMoneyValue            `json:"used,omitempty"`
-	OnDemandCap        XAIMoneyValue            `json:"onDemandCap,omitempty"`
-	OnDemandUsed       XAIMoneyValue            `json:"onDemandUsed,omitempty"`
-	BillingPeriodStart string                   `json:"billingPeriodStart,omitempty"`
-	BillingPeriodEnd   string                   `json:"billingPeriodEnd,omitempty"`
-	History            []XAIBillingHistoryItem  `json:"history,omitempty"`
-}
-
-type XAIBillingPayload struct {
-	Config *XAIBillingConfig `json:"config,omitempty"`
-}
-
-type AntigravityResult struct {
-	Quota        *AntigravityQuotaPayload        `json:"quota"`
-	Subscription *AntigravitySubscriptionPayload `json:"subscription,omitempty"`
-}
-
 type CodexResult struct {
 	Usage *CodexUsagePayload `json:"usage"`
-}
-
-type GeminiCLIResult struct {
-	Quota      *GeminiCliQuotaPayload      `json:"quota"`
-	CodeAssist *GeminiCLICodeAssistPayload `json:"codeAssist"`
 }
 
 type ClaudeResult struct {
 	Usage   *ClaudeUsagePayload    `json:"usage"`
 	Profile *ClaudeProfileResponse `json:"profile"`
-}
-
-type KimiResult struct {
-	Usage *KimiUsagePayload `json:"usage"`
-}
-
-type XAIResult struct {
-	Weekly  *XAIBillingPayload `json:"weekly,omitempty"`
-	Monthly *XAIBillingPayload `json:"monthly,omitempty"`
 }
 
 type ProviderHandler interface {

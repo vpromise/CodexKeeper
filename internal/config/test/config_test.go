@@ -14,10 +14,10 @@ import (
 
 var configEnvKeys = []string{
 	"APP_HOST", "APP_PORT", "APP_BASE_PATH", "CPA_PUBLIC_URL", "WORK_DIR", "CPA_BASE_URL", "CPA_MANAGEMENT_KEY", "POLL_INTERVAL",
-	"USAGE_SYNC_MODE", "REDIS_QUEUE_ADDR", "REDIS_QUEUE_TLS", "REDIS_QUEUE_BATCH_SIZE", "REDIS_QUEUE_IDLE_INTERVAL",
+	"USAGE_SYNC_MODE", "REDIS_QUEUE_ADDR", "REDIS_QUEUE_TLS", "REDIS_QUEUE_BATCH_SIZE", "REDIS_QUEUE_RETRY_INTERVAL",
 	"SQLITE_PATH", "BACKUP_ENABLED", "BACKUP_DIR", "BACKUP_INTERVAL", "BACKUP_RETENTION_DAYS",
 	"REQUEST_TIMEOUT", "LOG_LEVEL", "LOG_FILE_ENABLED", "LOG_DIR", "LOG_RETENTION_DAYS",
-	"AUTH_ENABLED", "LOGIN_PASSWORD", "AUTH_SESSION_TTL", "TRUSTED_PROXY_CIDRS", "TZ", "TLS_SKIP_VERIFY", "QUOTA_REFRESH_WORKER_LIMIT", "QUOTA_UPSTREAM_RESPONSES_ENABLED",
+	"AUTH_ENABLED", "LOGIN_PASSWORD", "LOGIN_PASSWORD_HASH", "AUTH_SESSION_TTL", "TRUSTED_PROXY_CIDRS", "TZ", "TLS_SKIP_VERIFY", "QUOTA_REFRESH_WORKER_LIMIT", "QUOTA_UPSTREAM_RESPONSES_ENABLED",
 	"API_KEY_VIEWER_LOCAL_RANKING_ENABLED",
 }
 
@@ -106,8 +106,8 @@ func TestLoadFromEnvAppliesDefaults(t *testing.T) {
 	if cfg.RedisQueueBatchSize != 10000 {
 		t.Fatalf("expected default redis queue batch size 10000, got %d", cfg.RedisQueueBatchSize)
 	}
-	if cfg.RedisQueueIdleInterval != time.Second {
-		t.Fatalf("expected default redis queue idle interval 1s, got %s", cfg.RedisQueueIdleInterval)
+	if cfg.RedisQueueRetryInterval != time.Second {
+		t.Fatalf("expected default redis queue idle interval 1s, got %s", cfg.RedisQueueRetryInterval)
 	}
 	if cfg.MetadataSyncInterval != MetadataSyncIntervalDefault {
 		t.Fatalf("expected default metadata sync interval 30s, got %s", cfg.MetadataSyncInterval)
@@ -245,7 +245,7 @@ func TestLoadFromEnvRequiresCriticalValues(t *testing.T) {
 		t.Setenv("LOGIN_PASSWORD", "")
 
 		_, err := LoadFromEnv()
-		if err == nil || err.Error() != "LOGIN_PASSWORD is required when AUTH_ENABLED is true" {
+		if err == nil || err.Error() != "LOGIN_PASSWORD or LOGIN_PASSWORD_HASH is required when AUTH_ENABLED is true" {
 			t.Fatalf("expected LOGIN_PASSWORD required error, got %v", err)
 		}
 	})
@@ -295,7 +295,7 @@ func TestLoadFromEnvParsesOverrides(t *testing.T) {
 	t.Setenv("AUTH_ENABLED", "true")
 	t.Setenv("LOGIN_PASSWORD", "top-secret")
 	t.Setenv("AUTH_SESSION_TTL", "12h")
-	t.Setenv("REDIS_QUEUE_IDLE_INTERVAL", "2s")
+	t.Setenv("REDIS_QUEUE_RETRY_INTERVAL", "2s")
 	t.Setenv("TLS_SKIP_VERIFY", "true")
 	t.Setenv("REDIS_QUEUE_TLS", "true")
 	t.Setenv("QUOTA_REFRESH_WORKER_LIMIT", "8")
@@ -311,7 +311,7 @@ func TestLoadFromEnvParsesOverrides(t *testing.T) {
 	if !cfg.RedisQueueTLS {
 		t.Fatal("expected redis queue TLS to be enabled when set to true")
 	}
-	if cfg.AppPort != "9090" || cfg.AppBasePath != "/cpa" || cfg.CPAPublicURL != "https://cpa.public.example.com/" || cfg.WorkDir != "/tmp/work" || cfg.SQLitePath != filepath.Join("/tmp/work", "app.db") || cfg.BackupEnabled || cfg.BackupDir != filepath.Join("/tmp/work", "backups") || cfg.BackupInterval != 2*time.Hour || cfg.BackupRetentionDays != 7 || cfg.RequestTimeout != 15*time.Second || cfg.LogLevel != "debug" || cfg.LogFileEnabled || cfg.LogDir != filepath.Join("/tmp/work", "logs") || cfg.LogRetentionDays != 14 || !cfg.AuthEnabled || cfg.LoginPassword != "top-secret" || cfg.AuthSessionTTL != 12*time.Hour || cfg.RedisQueueIdleInterval != 2*time.Second || cfg.QuotaRefreshWorkerLimit != 8 {
+	if cfg.AppPort != "9090" || cfg.AppBasePath != "/cpa" || cfg.CPAPublicURL != "https://cpa.public.example.com/" || cfg.WorkDir != "/tmp/work" || cfg.SQLitePath != filepath.Join("/tmp/work", "app.db") || cfg.BackupEnabled || cfg.BackupDir != filepath.Join("/tmp/work", "backups") || cfg.BackupInterval != 2*time.Hour || cfg.BackupRetentionDays != 7 || cfg.RequestTimeout != 15*time.Second || cfg.LogLevel != "debug" || cfg.LogFileEnabled || cfg.LogDir != filepath.Join("/tmp/work", "logs") || cfg.LogRetentionDays != 14 || !cfg.AuthEnabled || cfg.LoginPassword != "top-secret" || cfg.AuthSessionTTL != 12*time.Hour || cfg.RedisQueueRetryInterval != 2*time.Second || cfg.QuotaRefreshWorkerLimit != 8 {
 		t.Fatalf("unexpected config override result: %+v", cfg)
 	}
 }

@@ -10,11 +10,11 @@ import (
 	"time"
 
 	. "cpa-usage-keeper/internal/api"
-	"cpa-usage-keeper/internal/auth"
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/repository/dto"
 	"cpa-usage-keeper/internal/service"
 	servicedto "cpa-usage-keeper/internal/service/dto"
+
 	"gorm.io/gorm"
 )
 
@@ -53,120 +53,6 @@ func (s *overviewAPIKeyStub) ListCPAAPIKeys(context.Context) ([]entities.CPAAPIK
 
 func (s *overviewAPIKeyStub) FindActiveCPAAPIKeyByID(context.Context, int64) (entities.CPAAPIKey, error) {
 	return s.row, s.findErr
-}
-
-func TestKeyOverviewIgnoresClientAPIKeyIDAndReturnsViewerOverview(t *testing.T) {
-	provider := &usageFilterStub{overview: &servicedto.UsageOverviewSnapshot{Usage: &dto.StatisticsSnapshot{TotalRequests: 3}}}
-	router, cookie := newUsageViewerRouter(t, provider)
-
-	resp := serveAPIGet(router, "/api/v1/key-overview?range=24h&api_key_id=not-a-number", cookie)
-
-	if resp.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d %s", resp.Code, resp.Body.String())
-	}
-	if provider.lastFilter.APIKeyID != "42" || provider.lastFilter.Range != "24h" {
-		t.Fatalf("expected key overview to force viewer API key id, got %+v", provider.lastFilter)
-	}
-	if !strings.Contains(resp.Body.String(), `"total_requests":3`) {
-		t.Fatalf("unexpected response body: %s", resp.Body.String())
-	}
-}
-
-func TestKeyOverviewRealtimeIgnoresClientAPIKeyID(t *testing.T) {
-	provider := &usageFilterStub{
-		realtime: &servicedto.UsageOverviewRealtime{
-			Window:        "60m",
-			BucketSeconds: 120,
-			RequestLevel: []servicedto.RealtimeRequestLevelPoint{{
-				Bucket:            "2026-04-22T11:00:00Z",
-				RequestsPerMinute: 6,
-				Requests:          12,
-			}},
-		},
-	}
-	router, cookie := newUsageViewerRouter(t, provider)
-
-	realtimeResp := serveAPIGet(router, "/api/v1/key-overview/realtime?window=60m&api_key_id=not-a-number", cookie)
-
-	if realtimeResp.Code != http.StatusOK {
-		t.Fatalf("expected realtime status 200, got %d %s", realtimeResp.Code, realtimeResp.Body.String())
-	}
-	if provider.lastRealtime.APIKeyID != "42" || provider.lastRealtime.RealtimeWindow != "60m" || provider.lastRealtime.RealtimeEndTime == nil {
-		t.Fatalf("expected key overview realtime to force viewer API key id and pass window, got %+v", provider.lastRealtime)
-	}
-	if !strings.Contains(realtimeResp.Body.String(), `"request_level":[{"bucket":"2026-04-22T11:00:00Z","requests_per_minute":6,"requests":12}]`) {
-		t.Fatalf("unexpected realtime response body: %s", realtimeResp.Body.String())
-	}
-	var realtimeBody map[string]any
-	if err := json.Unmarshal(realtimeResp.Body.Bytes(), &realtimeBody); err != nil {
-		t.Fatalf("decode key overview realtime response: %v", err)
-	}
-	currentUsage, ok := realtimeBody["current_usage"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected key overview realtime current_usage object, got %s", realtimeResp.Body.String())
-	}
-	assertAllowedJSONKeys(t, currentUsage, "key overview realtime current_usage", realtimeResp.Body.String(), "models")
-	if strings.Contains(realtimeResp.Body.String(), `"api_keys":`) || strings.Contains(realtimeResp.Body.String(), `"auth_files":`) || strings.Contains(realtimeResp.Body.String(), `"ai_providers":`) {
-		t.Fatalf("expected key overview realtime to omit internal current-usage dimensions, got %s", realtimeResp.Body.String())
-	}
-	if provider.realtimeCalls != 1 {
-		t.Fatalf("expected one realtime call, got %d", provider.realtimeCalls)
-	}
-}
-
-func TestKeyOverviewRejectsUnsupportedRanges(t *testing.T) {
-	provider := &usageFilterStub{overview: &servicedto.UsageOverviewSnapshot{}}
-	router, cookie := newUsageViewerRouter(t, provider)
-
-	for _, path := range []string{"/api/v1/key-overview?range=90d", "/api/v1/key-overview?start=2026-04-20"} {
-		resp := serveAPIGet(router, path, cookie)
-		if resp.Code != http.StatusBadRequest {
-			t.Fatalf("expected %s to return 400, got %d %s", path, resp.Code, resp.Body.String())
-		}
-	}
-	if provider.overviewCalls != 0 {
-		t.Fatalf("expected invalid ranges not to call usage provider, got %d", provider.overviewCalls)
-	}
-}
-
-func TestKeyOverviewReturnsConflictForExpiredCustomRange(t *testing.T) {
-	provider := &usageFilterStub{overview: &servicedto.UsageOverviewSnapshot{}}
-	router, cookie := newUsageViewerRouter(t, provider)
-
-	resp := serveAPIGet(router, "/api/v1/key-overview?range=custom&unit=day&start=2000-01-01&end=2000-01-02", cookie)
-
-	if resp.Code != http.StatusConflict {
-		t.Fatalf("expected expired Custom range to return 409, got %d %s", resp.Code, resp.Body.String())
-	}
-	if provider.overviewCalls != 0 {
-		t.Fatalf("expected expired range not to call usage provider, got %d", provider.overviewCalls)
-	}
-}
-
-func TestKeyOverviewClearsInactiveViewerSession(t *testing.T) {
-	sessions := auth.NewSessionManager(time.Hour)
-	token, _, err := sessions.CreateAPIKeyViewer(42)
-	if err != nil {
-		t.Fatalf("CreateAPIKeyViewer returned error: %v", err)
-	}
-	provider := &usageFilterStub{overview: &servicedto.UsageOverviewSnapshot{}}
-	keyProvider := &overviewAPIKeyStub{findErr: context.Canceled}
-	config := AuthConfig{Enabled: true, LoginPassword: "secret", SessionTTL: time.Hour, BasePath: "/cpa"}
-	handler := NewAuthHandler(config, sessions)
-	router := NewRouter(nil, nil, provider, nil, config, handler, "/cpa", OptionalProviders{CPAAPIKeys: keyProvider})
-
-	resp := serveAPIGet(router, "/cpa/api/v1/key-overview?range=24h", &http.Cookie{Name: standardSessionCookieName, Value: token})
-
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d %s", resp.Code, resp.Body.String())
-	}
-	if sessions.Validate(token) {
-		t.Fatal("expected inactive viewer session to be deleted")
-	}
-	cookies := resp.Result().Cookies()
-	if len(cookies) == 0 || cookies[0].Path != "/cpa" || cookies[0].MaxAge >= 0 {
-		t.Fatalf("expected session cookie to be cleared, got %+v", cookies)
-	}
 }
 
 func TestUsageOverviewResponseKeepsResolvedFilterAndTimezone(t *testing.T) {

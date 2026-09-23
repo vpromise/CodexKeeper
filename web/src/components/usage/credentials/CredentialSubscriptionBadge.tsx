@@ -19,11 +19,6 @@ const BADGE_PRESENTATIONS: Record<SubscriptionBadgeKind, BadgePresentation> = {
   'claude-pro': { className: styles.credentialPlanBadgePlus, hasPremiumMotion: true },
   'claude-max': { className: styles.credentialPlanBadgePro20x, hasPremiumMotion: true },
   'claude-team': { className: styles.credentialPlanBadgeTeam, hasPremiumMotion: true },
-  'antigravity-free': { className: styles.credentialPlanBadgeFree, hasPremiumMotion: false },
-  'antigravity-pro': { className: styles.credentialPlanBadgePlus, hasPremiumMotion: true },
-  'antigravity-ultra-lite': { className: styles.credentialPlanBadgePro5x, hasPremiumMotion: true },
-  'antigravity-ultra': { className: styles.credentialPlanBadgePro20x, hasPremiumMotion: true },
-  'antigravity-unknown': { className: styles.credentialPlanBadgeNeutral, hasPremiumMotion: false },
 }
 
 export function CredentialSubscriptionBadge({ model }: { model: SubscriptionBadgeModel }) {

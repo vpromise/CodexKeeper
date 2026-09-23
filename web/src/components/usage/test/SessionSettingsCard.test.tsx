@@ -25,12 +25,10 @@ const sessions: AuthManagedSessionItem[] = [
   },
   {
     id: 'hashed-session-id',
-    kind: 'api_key',
-    role: 'api_key_viewer',
+    kind: 'admin',
+    role: 'admin',
     source: 'embed',
-    apiKeyId: '42',
-    label: 'Team Key',
-    displayKey: 'sk-*********123456',
+    alias: 'Embedded Admin',
     loginAt: '2026/06/20 10:10:00',
     expiresAt: '2026/06/27 10:10:00',
   },
@@ -47,7 +45,7 @@ const renderCard = (props: Partial<React.ComponentProps<typeof SessionSettingsCa
 );
 
 describe('SessionSettingsCard', () => {
-  it('renders admin and API key sessions with shared row details and current marker', () => {
+  it('renders standalone and embedded admin sessions with shared row details and current marker', () => {
     const html = renderCard();
 
     expect(html).toContain('Session Management');
@@ -59,7 +57,7 @@ describe('SessionSettingsCard', () => {
     expect(html).toContain('2026/06/20 12:00:00');
     expect(html).toContain('2026/06/20 10:05:00');
     expect(html).toContain('2026/06/20 12:05:00');
-    expect(html).toContain('Team Key');
+    expect(html).toContain('Embedded Admin');
     expect(html).toContain('2026/06/20 10:10:00');
     expect(html).toContain('2026/06/27 10:10:00');
     expect(html).not.toContain('All admin sessions will be signed out together.');
@@ -77,14 +75,11 @@ describe('SessionSettingsCard', () => {
   });
 
   it('uses per-session warning copy for both admin and API key confirmations', () => {
-    const adminKeys = getSessionLogoutConfirmationKeys(sessions[0]);
-    const apiKeyKeys = getSessionLogoutConfirmationKeys(sessions[2]);
+    const adminKeys = getSessionLogoutConfirmationKeys();
 
     expect(i18n.t(adminKeys.bodyKey)).toContain('this admin session');
     expect(i18n.t(adminKeys.bodyKey)).toContain('Other admin sessions');
     expect(i18n.t(adminKeys.bodyKey)).not.toContain('current device');
-    expect(i18n.t(apiKeyKeys.bodyKey, { label: sessions[2].label })).toContain('Team Key');
-    expect(i18n.t(apiKeyKeys.bodyKey, { label: sessions[2].label })).toContain('Other sessions');
   });
 
   it('disables the row currently being revoked', () => {

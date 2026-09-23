@@ -39,7 +39,6 @@ func TestLoginSetsCookieForSessionSource(t *testing.T) {
 	}{
 		{name: "standard password"},
 		{name: "embed password", embed: true},
-		{name: "embed API key", embed: true, apiKey: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var keys service.CPAAPIKeyProvider
@@ -80,27 +79,6 @@ func TestLoginSetsCookieForSessionSource(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestAPIKeyViewerEmbedHeaderTokenGetsSession(t *testing.T) {
-	router, sessions := newEmbedAuthRouterWithOptions(time.Hour, "", &authCPAAPIKeyStub{row: entities.CPAAPIKey{ID: 42, APIKey: "sk-cpa-viewer", DisplayKey: "sk-...viewer", KeyAlias: "Team Key"}})
-	token, _, err := sessions.CreateAPIKeyViewerWithSource(42, auth.SessionSourceEmbed)
-	if err != nil {
-		t.Fatalf("CreateAPIKeyViewerWithSource returned error: %v", err)
-	}
-
-	resp := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil)
-	req.Header.Set(embedHeaderName, "cpamc")
-	req.Header.Set(embedSessionHeaderName, token)
-	router.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusOK {
-		t.Fatalf("expected API key viewer session status 200, got %d body=%s", resp.Code, resp.Body.String())
-	}
-	if !strings.Contains(resp.Body.String(), `"authenticated":true`) || !strings.Contains(resp.Body.String(), `"role":"api_key_viewer"`) || !strings.Contains(resp.Body.String(), `"alias":"Team Key"`) {
-		t.Fatalf("expected header-only API key viewer embed session response, got %s", resp.Body.String())
 	}
 }
 
@@ -478,31 +456,6 @@ func TestBasePathSessionCookiesUseBasePath(t *testing.T) {
 	}
 	if cookie := requireCookie(t, revokeResp.Result().Cookies(), embedSessionCookieName); cookie.Path != "/cpa" {
 		t.Fatalf("expected base path revoke cookie Path=/cpa, got %+v", cookie)
-	}
-}
-
-func TestKeyOverviewClearsEmbedCookieWhenViewerAPIKeyIsInactive(t *testing.T) {
-	router, sessions := newEmbedAuthRouterWithOptions(time.Hour, "", inactiveCPAAPIKeyProvider{})
-	token, _, err := sessions.CreateAPIKeyViewerWithSource(42, auth.SessionSourceEmbed)
-	if err != nil {
-		t.Fatalf("CreateAPIKeyViewerWithSource returned error: %v", err)
-	}
-
-	resp := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/key-overview?range=8h", nil)
-	req.Header.Set(embedHeaderName, "cpamc")
-	req.AddCookie(&http.Cookie{Name: embedSessionCookieName, Value: token})
-	router.ServeHTTP(resp, req)
-
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("expected inactive API key viewer to be rejected, got %d body=%s", resp.Code, resp.Body.String())
-	}
-	if sessions.Validate(token) {
-		t.Fatal("expected inactive API key viewer session to be deleted")
-	}
-	cookie := requireCookie(t, resp.Result().Cookies(), embedSessionCookieName)
-	if cookie.MaxAge >= 0 || cookie.SameSite != http.SameSiteNoneMode || !cookie.Secure || !cookie.Partitioned {
-		t.Fatalf("expected key overview to clear embed cookie with matching attributes, got %+v", cookie)
 	}
 }
 

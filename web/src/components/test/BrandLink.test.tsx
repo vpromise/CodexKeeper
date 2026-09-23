@@ -10,7 +10,6 @@ describe('BrandLink', () => {
     expect(html).toContain('<img');
     expect(html).toContain('alt=""');
     expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain('>KEEPER</span>');
-    expect(html).not.toContain('CPA Usage Keeper');
+    expect(html).toContain('>CodexKeeper</span>');
   });
 });

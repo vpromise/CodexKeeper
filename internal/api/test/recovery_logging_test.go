@@ -11,6 +11,7 @@ import (
 	. "cpa-usage-keeper/internal/api"
 	"cpa-usage-keeper/internal/config"
 	"cpa-usage-keeper/internal/logging"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )

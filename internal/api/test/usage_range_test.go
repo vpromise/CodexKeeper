@@ -119,25 +119,3 @@ func TestUsageRoutesRejectCustomRangesOutsideProductBounds(t *testing.T) {
 		})
 	}
 }
-
-func TestKeyOverviewAcceptsRollingAndCustomRanges(t *testing.T) {
-	now := time.Now().In(time.Local)
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
-	custom := url.Values{"range": {"custom"}, "unit": {"day"}, "start": {today.AddDate(0, 0, -6).Format(time.DateOnly)}, "end": {today.Format(time.DateOnly)}}
-	for _, tc := range []struct{ query, unit string }{
-		{"range=13d", ""},
-		{custom.Encode(), "day"},
-	} {
-		t.Run(tc.query, func(t *testing.T) {
-			provider := &usageEventsStub{}
-			router, cookie := newUsageViewerRouter(t, provider)
-			resp := serveAPIGet(router, "/api/v1/key-overview?"+tc.query, cookie)
-			if resp.Code != http.StatusOK {
-				t.Fatalf("key overview status=%d body=%s", resp.Code, resp.Body.String())
-			}
-			if provider.lastFilter.APIKeyID != "42" || provider.lastFilter.CustomUnit != tc.unit || (tc.unit != "" && !provider.lastFilter.EndExclusive) {
-				t.Fatalf("expected key overview to preserve range and force viewer key, got %+v", provider.lastFilter)
-			}
-		})
-	}
-}

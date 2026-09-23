@@ -67,24 +67,6 @@ func liteLLMProviderID(provider string) string {
 	switch provider {
 	case "text-completion-openai":
 		return "openai"
-	case "gemini":
-		return "google"
-	case "vertex_ai", "vertex_ai-language-models":
-		return "google-vertex"
-	case "vertex_ai-anthropic_models":
-		return "google-vertex-anthropic"
-	case "bedrock", "bedrock_converse":
-		return "amazon-bedrock"
-	case "x_ai":
-		return "xai"
-	case "moonshot":
-		return "moonshotai"
-	case "dashscope", "qwen_ai_platform":
-		return "alibaba-cn"
-	case "qwencloud":
-		return "alibaba"
-	case "cohere_chat":
-		return "cohere"
 	default:
 		return provider
 	}

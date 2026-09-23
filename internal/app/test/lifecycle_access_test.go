@@ -7,6 +7,7 @@ import (
 
 	_ "cpa-usage-keeper/internal/app"
 	"cpa-usage-keeper/internal/repository"
+
 	"gorm.io/gorm"
 )
 

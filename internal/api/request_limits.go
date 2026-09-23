@@ -17,9 +17,8 @@ const (
 func unauthenticatedLoginRequestLimits(basePath string) gin.HandlerFunc {
 	prefix := strings.TrimSuffix(basePath, "/") + "/api/v1/auth/"
 	loginPath := prefix + "login"
-	apiKeyLoginPath := prefix + "api-key-login"
 	return func(c *gin.Context) {
-		if c.Request.Method != http.MethodPost || (c.Request.URL.Path != loginPath && c.Request.URL.Path != apiKeyLoginPath) {
+		if c.Request.Method != http.MethodPost || c.Request.URL.Path != loginPath {
 			c.Next()
 			return
 		}

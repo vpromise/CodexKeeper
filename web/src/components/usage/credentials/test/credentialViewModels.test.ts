@@ -117,32 +117,6 @@ describe('credentialViewModels', () => {
     ])
   })
 
-  it('builds Antigravity subscription badges from refreshed quota responses', () => {
-    const quotas = new Map<string, UsageQuotaCheckResponse>([
-      ['free-auth', quotaResponse('free-auth', [], undefined, { provider: 'antigravity', plan: 'free' })],
-      ['pro-auth', quotaResponse('pro-auth', [], undefined, { provider: 'antigravity', plan: 'pro' })],
-      ['lite-auth', quotaResponse('lite-auth', [], undefined, { provider: 'antigravity', plan: 'ultra-lite' })],
-      ['ultra-auth', quotaResponse('ultra-auth', [], undefined, { provider: 'antigravity', plan: 'ultra' })],
-      ['unknown-auth', quotaResponse('unknown-auth', [], undefined, { provider: 'antigravity', plan: 'unknown', tierId: 'future-tier', tierName: 'Future' })],
-    ])
-
-    const rows = buildAuthFileCredentialRows([
-      identity({ identity: 'free-auth', type: 'antigravity', provider: 'antigravity' }),
-      identity({ identity: 'pro-auth', type: 'antigravity', provider: 'antigravity' }),
-      identity({ identity: 'lite-auth', type: 'antigravity', provider: 'antigravity' }),
-      identity({ identity: 'ultra-auth', type: 'antigravity', provider: 'antigravity' }),
-      identity({ identity: 'unknown-auth', type: 'antigravity', provider: 'antigravity' }),
-    ], quotas)
-
-    expect(rows.map((row) => row.subscriptionBadge)).toEqual([
-      { kind: 'antigravity-free', labelKey: 'usage_stats.credentials_subscription_antigravity_free' },
-      { kind: 'antigravity-pro', labelKey: 'usage_stats.credentials_subscription_antigravity_pro' },
-      { kind: 'antigravity-ultra-lite', labelKey: 'usage_stats.credentials_subscription_antigravity_ultra_lite' },
-      { kind: 'antigravity-ultra', labelKey: 'usage_stats.credentials_subscription_antigravity_ultra' },
-      { kind: 'antigravity-unknown', fallbackLabel: 'Future' },
-    ])
-  })
-
   it('prefers refreshed quota subscription over usage identity subscription', () => {
     const quotas = new Map<string, UsageQuotaCheckResponse>([
       ['auth-1', quotaResponse('auth-1', [
@@ -260,40 +234,6 @@ describe('credentialViewModels', () => {
       percentKind: 'used',
       barPercent: 17,
       status: 'danger',
-    })
-  })
-
-  it('preserves Antigravity quota group metadata for provider-specific rendering', () => {
-    const groupedQuota: UsageQuotaRow = {
-      key: 'bucket.antigravity-gemini-models.gemini-5h',
-      label: '5h',
-      scope: 'quota_group',
-      metric: '5h',
-      groupKey: 'antigravity-gemini-models',
-      groupLabel: 'Gemini Models',
-      groupDescription: 'Models within this group: Gemini Flash, Gemini Pro',
-      remainingFraction: 0.72,
-      window: { seconds: 18_000 },
-      resetAt: '2026-05-09T12:00:00Z',
-      window_usage_tokens: 1_000_000,
-      window_usage_cost: 2.8,
-    }
-    const quotas = new Map<string, UsageQuotaCheckResponse>([
-      ['antigravity-auth', quotaResponse('antigravity-auth', [groupedQuota])],
-    ])
-
-    const rows = buildAuthFileCredentialRows([
-      identity({ identity: 'antigravity-auth', type: 'antigravity', provider: 'antigravity' }),
-    ], quotas)
-
-    expect(rows[0].displayQuotas[0]).toMatchObject({
-      label: '5h',
-      scope: 'quota_group',
-      groupKey: 'antigravity-gemini-models',
-      groupLabel: 'Gemini Models',
-      groupDescription: 'Models within this group: Gemini Flash, Gemini Pro',
-      windowUsage: { tokens: '1.00M', cost: '$2.80' },
-      windowUsageEstimate: { tokens: '3.57M', cost: '$10.00' },
     })
   })
 

@@ -17,6 +17,7 @@ import (
 	"cpa-usage-keeper/internal/repository"
 	"cpa-usage-keeper/internal/service"
 	servicedto "cpa-usage-keeper/internal/service/dto"
+
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -192,13 +193,8 @@ func TestBuildPricingSyncPreviewMatchesMetadataModels(t *testing.T) {
 	service := service.NewPricingService(db, emptyPricingCatalogForTest(), stubModelsFetcher{result: &response.ModelsResult{Payload: models.ModelsResponse{Data: []models.ModelInfo{
 		{ID: "openai/gpt-4o"},
 		{ID: "Claude Sonnet 4"},
-		{ID: "deepseek-chat"},
 		{ID: "gpt-5.4"},
 		{ID: "gpt-5.6-terra"},
-		{ID: "deepseek-v4-pro"},
-		{ID: "DeepSeek V4 Flash"},
-		{ID: "GLM-4.7-Flash"},
-		{ID: "minimax-m3"},
 		{ID: "missing-model"},
 	}}}})
 
@@ -213,8 +209,8 @@ func TestBuildPricingSyncPreviewMatchesMetadataModels(t *testing.T) {
 	if preview.MetadataModels != 13 {
 		t.Fatalf("expected metadata model count, got %d", preview.MetadataModels)
 	}
-	if len(preview.Matches) != 9 {
-		t.Fatalf("expected 9 matches, got %#v", preview.Matches)
+	if len(preview.Matches) != 4 {
+		t.Fatalf("expected 4 native matches, got %#v", preview.Matches)
 	}
 	matchesByModel := make(map[string]servicedto.PricingSyncMatch, len(preview.Matches))
 	for _, match := range preview.Matches {
@@ -226,9 +222,6 @@ func TestBuildPricingSyncPreviewMatchesMetadataModels(t *testing.T) {
 	if match := matchesByModel["openai/gpt-4o"]; match.MatchedModel != "openai/gpt-4o" || match.MatchType != "index_suffix" || match.SourceProviderID != "openai" {
 		t.Fatalf("unexpected gpt match: %#v", match)
 	}
-	if match := matchesByModel["deepseek-chat"]; match.SourceProviderID != "deepseek" {
-		t.Fatalf("unexpected deepseek official priority match: %#v", match)
-	}
 	if match := matchesByModel["gpt-5.4"]; match.PricingStyle != "openai" || match.CacheReadPricePer1M != 0.25 || match.CacheWritePricePer1M != 0 {
 		t.Fatalf("unexpected openai cache match: %#v", match)
 	}
@@ -237,18 +230,6 @@ func TestBuildPricingSyncPreviewMatchesMetadataModels(t *testing.T) {
 	}
 	if match := matchesByModel["openai/gpt-4o"]; match.CacheWritePricePer1M != 0 {
 		t.Fatalf("expected missing OpenAI cache_write metadata to default to zero, got %#v", match)
-	}
-	if match := matchesByModel["deepseek-v4-pro"]; match.MatchedModel != "deepseek-ai/DeepSeek-V4-Pro" || match.SourceProviderID != "nebius" {
-		t.Fatalf("unexpected deepseek index match: %#v", match)
-	}
-	if match := matchesByModel["DeepSeek V4 Flash"]; match.MatchedModel != "deepseek-ai/DeepSeek-V4-Flash" || match.SourceProviderID != "nebius" {
-		t.Fatalf("unexpected deepseek flash match: %#v", match)
-	}
-	if match := matchesByModel["GLM-4.7-Flash"]; match.MatchedModel != "zai-org/GLM-4.7-Flash" || match.SourceProviderID != "zai" {
-		t.Fatalf("unexpected glm match: %#v", match)
-	}
-	if match := matchesByModel["minimax-m3"]; match.MatchedModel != "minimax/minimax-m3" || match.SourceProviderID != "vercel" || match.PromptPricePer1M == 0 {
-		t.Fatalf("unexpected minimax plan fallback match: %#v", match)
 	}
 	if len(preview.UnmatchedModels) != 1 || preview.UnmatchedModels[0] != "missing-model" {
 		t.Fatalf("unexpected unmatched models: %#v", preview.UnmatchedModels)
@@ -304,21 +285,21 @@ func TestBuildPricingSyncPreviewIgnoresCustomCPAPrefixForProviderSelection(t *te
 			"id": "mimo",
 			"name": "Custom MIMO Gateway",
 			"models": {
-				"mimo-v2.5-pro": {
-					"id": "mimo-v2.5-pro",
-					"name": "MiMo V2.5 Pro",
+				"gpt-5-test": {
+					"id": "gpt-5-test",
+					"name": "GPT 5 Test",
 					"family": "mimo",
 					"cost": {"input": 9, "output": 18}
 				}
 			}
 		},
-		"xiaomi": {
-			"id": "xiaomi",
-			"name": "Xiaomi",
+		"openai": {
+			"id": "openai",
+			"name": "OpenAI",
 			"models": {
-				"mimo-v2.5-pro": {
-					"id": "mimo-v2.5-pro",
-					"name": "MiMo V2.5 Pro",
+				"gpt-5-test": {
+					"id": "gpt-5-test",
+					"name": "GPT 5 Test",
 					"family": "mimo",
 					"cost": {"input": 0.435, "output": 0.87}
 				}
@@ -327,7 +308,7 @@ func TestBuildPricingSyncPreviewIgnoresCustomCPAPrefixForProviderSelection(t *te
 	}`)
 
 	db := openUsageServiceTestDatabase(t)
-	pricingService := service.NewPricingService(db, emptyPricingCatalogForTest(), stubModelsFetcher{result: &response.ModelsResult{Payload: models.ModelsResponse{Data: []models.ModelInfo{{ID: "MIMO/mimo-v2.5-pro"}}}}})
+	pricingService := service.NewPricingService(db, emptyPricingCatalogForTest(), stubModelsFetcher{result: &response.ModelsResult{Payload: models.ModelsResponse{Data: []models.ModelInfo{{ID: "MIMO/gpt-5-test"}}}}})
 	preview, err := pricingService.PreviewPricingSync(context.Background(), "")
 	if err != nil {
 		t.Fatalf("build pricing sync preview: %v", err)
@@ -336,7 +317,7 @@ func TestBuildPricingSyncPreviewIgnoresCustomCPAPrefixForProviderSelection(t *te
 		t.Fatalf("expected one custom-prefix match, got %#v", preview)
 	}
 	match := preview.Matches[0]
-	if match.SourceProviderID != "xiaomi" || match.MatchedModel != "mimo-v2.5-pro" || match.PromptPricePer1M != 0.435 || match.CompletionPricePer1M != 0.87 {
+	if match.SourceProviderID != "openai" || match.MatchedModel != "gpt-5-test" || match.PromptPricePer1M != 0.435 || match.CompletionPricePer1M != 0.87 {
 		t.Fatalf("expected custom CPA prefix not to affect provider ranking, got %#v", match)
 	}
 }

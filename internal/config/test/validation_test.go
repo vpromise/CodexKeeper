@@ -19,7 +19,7 @@ func TestLoadFromEnvRejectsInvalidValues(t *testing.T) {
 		{"LOG_RETENTION_DAYS", "-1", "LOG_RETENTION_DAYS must be non-negative"},
 		{"QUOTA_REFRESH_WORKER_LIMIT", "101", "QUOTA_REFRESH_WORKER_LIMIT must be <= 100"},
 		{"QUOTA_REFRESH_WORKER_LIMIT", "0", "QUOTA_REFRESH_WORKER_LIMIT must be positive"},
-		{"REDIS_QUEUE_IDLE_INTERVAL", "0s", "REDIS_QUEUE_IDLE_INTERVAL must be positive"},
+		{"REDIS_QUEUE_RETRY_INTERVAL", "0s", "REDIS_QUEUE_RETRY_INTERVAL must be positive"},
 		{"APP_BASE_PATH", "cpa", "APP_BASE_PATH is invalid: must start with '/'"},
 		{"AUTH_SESSION_TTL", "0s", "AUTH_SESSION_TTL must be positive"},
 	} {

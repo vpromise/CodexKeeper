@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"cpa-usage-keeper/internal/auth"
-	"cpa-usage-keeper/internal/entities"
-	"cpa-usage-keeper/internal/helper"
-	"cpa-usage-keeper/internal/service"
+
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -37,40 +36,28 @@ const (
 )
 
 type AuthConfig struct {
-	Enabled                         bool
-	LoginPassword                   string
-	SessionTTL                      time.Duration
-	BasePath                        string
-	FrameAncestorOrigins            []string
-	TrustedProxyCIDRs               []string
-	APIKeyViewerLocalRankingEnabled bool
+	Enabled              bool
+	LoginPassword        string
+	LoginPasswordHash    string
+	SessionTTL           time.Duration
+	BasePath             string
+	FrameAncestorOrigins []string
+	TrustedProxyCIDRs    []string
 }
 
 type authHandler struct {
-	config            AuthConfig
-	sessions          *auth.SessionManager
-	cpaAPIKeyProvider service.CPAAPIKeyProvider
-	loginAttempts     *auth.LoginAttemptLimiter
+	config        AuthConfig
+	sessions      *auth.SessionManager
+	loginAttempts *auth.LoginAttemptLimiter
 }
 
 type loginRequest struct {
 	Password string `json:"password"`
 }
 
-type apiKeyLoginRequest struct {
-	APIKey string `json:"apiKey"`
-}
-
 type sessionResponse struct {
-	Authenticated bool                   `json:"authenticated"`
-	Role          auth.Role              `json:"role,omitempty"`
-	APIKey        *sessionAPIKeyResponse `json:"api_key,omitempty"`
-}
-
-type sessionAPIKeyResponse struct {
-	DisplayKey          string `json:"display_key"`
-	Alias               string `json:"alias,omitempty"`
-	LocalRankingEnabled bool   `json:"local_ranking_enabled,omitempty"`
+	Authenticated bool      `json:"authenticated"`
+	Role          auth.Role `json:"role,omitempty"`
 }
 
 type loginResponse struct {
@@ -111,16 +98,9 @@ func NewAuthHandler(config AuthConfig, sessions *auth.SessionManager) *authHandl
 	}
 }
 
-func (h *authHandler) setCPAAPIKeyProvider(provider service.CPAAPIKeyProvider) {
-	if h != nil {
-		h.cpaAPIKeyProvider = provider
-	}
-}
-
 func (h *authHandler) registerRoutes(router gin.IRoutes) {
 	router.GET("/session", h.getSession)
 	router.POST("/login", h.login)
-	router.POST("/api-key-login", h.apiKeyLogin)
 	router.POST("/logout", h.logout)
 }
 
@@ -130,10 +110,6 @@ func (h *authHandler) middleware() gin.HandlerFunc {
 
 func (h *authHandler) adminMiddleware() gin.HandlerFunc {
 	return h.roleMiddleware(auth.RoleAdmin)
-}
-
-func (h *authHandler) apiKeyViewerMiddleware() gin.HandlerFunc {
-	return h.roleMiddleware(auth.RoleAPIKeyViewer)
 }
 
 func (h *authHandler) roleMiddleware(allowedRoles ...auth.Role) gin.HandlerFunc {
@@ -164,44 +140,6 @@ func (h *authHandler) roleMiddleware(allowedRoles ...auth.Role) gin.HandlerFunc 
 	}
 }
 
-func (h *authHandler) activeAPIKeyViewerMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if h == nil || !h.config.Enabled {
-			c.Next()
-			return
-		}
-		resolvedValue, hasResolved := c.Get(authResolvedContextKey)
-		resolved, resolvedOK := resolvedValue.(resolvedSessionToken)
-		sessionValue, hasSession := c.Get(authSessionContextKey)
-		session, sessionOK := sessionValue.(auth.Session)
-		if !hasResolved || !resolvedOK || !hasSession || !sessionOK || session.Role != auth.RoleAPIKeyViewer {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		row, ok := h.activeViewerAPIKey(c, resolved, session)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		c.Set(activeViewerKeyContextKey, row)
-		c.Next()
-	}
-}
-
-func activeAPIKeyViewerContext(c *gin.Context) (auth.Session, entities.CPAAPIKey, bool) {
-	if c == nil {
-		return auth.Session{}, entities.CPAAPIKey{}, false
-	}
-	sessionValue, hasSession := c.Get(authSessionContextKey)
-	session, sessionOK := sessionValue.(auth.Session)
-	keyValue, hasKey := c.Get(activeViewerKeyContextKey)
-	key, keyOK := keyValue.(entities.CPAAPIKey)
-	if !hasSession || !sessionOK || !hasKey || !keyOK || session.CPAAPIKeyID <= 0 || session.CPAAPIKeyID != key.ID {
-		return auth.Session{}, entities.CPAAPIKey{}, false
-	}
-	return session, key, true
-}
-
 func sessionRoleAllowed(role auth.Role, allowedRoles []auth.Role) bool {
 	for _, allowed := range allowedRoles {
 		if role == allowed {
@@ -222,6 +160,13 @@ func (h *authHandler) resolveValidSession(c *gin.Context) (resolvedSessionToken,
 		}
 		session, ok := h.sessions.Get(resolved.Token)
 		if !ok {
+			h.deleteSession(resolved.Token)
+			if resolved.Transport == sessionTokenTransportCookie {
+				clearSessionCookie(c, h.config.BasePath, resolved.CookieKind)
+			}
+			continue
+		}
+		if session.Role != auth.RoleAdmin {
 			h.deleteSession(resolved.Token)
 			if resolved.Transport == sessionTokenTransportCookie {
 				clearSessionCookie(c, h.config.BasePath, resolved.CookieKind)
@@ -249,24 +194,12 @@ func (h *authHandler) getSession(c *gin.Context) {
 		return
 	}
 
-	resolved, session, ok := h.resolveValidSession(c)
+	_, session, ok := h.resolveValidSession(c)
 	if !ok {
 		c.JSON(http.StatusOK, sessionResponse{Authenticated: false})
 		return
 	}
 	response := sessionResponse{Authenticated: true, Role: session.Role}
-	if session.Role == auth.RoleAPIKeyViewer {
-		row, ok := h.activeViewerAPIKey(c, resolved, session)
-		if !ok {
-			c.JSON(http.StatusOK, sessionResponse{Authenticated: false})
-			return
-		}
-		response.APIKey = &sessionAPIKeyResponse{
-			DisplayKey:          helper.CPAAPIKeyMaskedDisplayKey(row),
-			Alias:               row.KeyAlias,
-			LocalRankingEnabled: h.config.APIKeyViewerLocalRankingEnabled,
-		}
-	}
 	c.JSON(http.StatusOK, response)
 }
 
@@ -294,7 +227,12 @@ func (h *authHandler) login(c *gin.Context) {
 		return
 	}
 
-	passwordMatches := subtle.ConstantTimeCompare([]byte(request.Password), []byte(h.config.LoginPassword)) == 1
+	passwordMatches := false
+	if h.config.LoginPasswordHash != "" {
+		passwordMatches = bcrypt.CompareHashAndPassword([]byte(h.config.LoginPasswordHash), []byte(request.Password)) == nil
+	} else if h.config.LoginPassword != "" {
+		passwordMatches = subtle.ConstantTimeCompare([]byte(request.Password), []byte(h.config.LoginPassword)) == 1
+	}
 	if !passwordMatches {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid password"})
 		return
@@ -310,59 +248,6 @@ func (h *authHandler) login(c *gin.Context) {
 
 	setSessionCookie(c, h.config.BasePath, resolved.CookieKind, token, expiresAt)
 	writeLoginSuccess(c, resolved, token)
-}
-
-func (h *authHandler) apiKeyLogin(c *gin.Context) {
-	if h == nil || !h.config.Enabled {
-		c.Status(http.StatusNoContent)
-		return
-	}
-	if h.sessions == nil || h.cpaAPIKeyProvider == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
-		return
-	}
-	clientKey := loginClientKey(c)
-	if !h.allowLoginAttempt(c, clientKey) {
-		return
-	}
-	var request apiKeyLoginRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		if isRequestEntityTooLarge(err) {
-			writeRequestEntityTooLarge(c)
-			return
-		}
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
-		return
-	}
-	row, err := h.cpaAPIKeyProvider.FindActiveCPAAPIKeyByValue(c.Request.Context(), request.APIKey)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
-		return
-	}
-	h.loginAttempts.Reset(clientKey)
-	resolved := resolveSessionToken(c)
-	token, expiresAt, err := h.sessions.CreateAPIKeyViewerWithSourceAndMetadata(row.ID, resolved.Source, sessionClientMetadata(c))
-	if err != nil {
-		writeInternalError(c, "create api key viewer session failed", err)
-		return
-	}
-	setSessionCookie(c, h.config.BasePath, resolved.CookieKind, token, expiresAt)
-	writeLoginSuccess(c, resolved, token)
-}
-
-func (h *authHandler) activeViewerAPIKey(c *gin.Context, resolved resolvedSessionToken, session auth.Session) (entities.CPAAPIKey, bool) {
-	if h.cpaAPIKeyProvider == nil || session.CPAAPIKeyID <= 0 {
-		h.deleteSession(resolved.Token)
-		clearSessionCookie(c, h.config.BasePath, resolved.CookieKind)
-		return entities.CPAAPIKey{}, false
-	}
-	row, err := h.cpaAPIKeyProvider.FindActiveCPAAPIKeyByID(c.Request.Context(), session.CPAAPIKeyID)
-	if err != nil {
-		h.deleteSession(resolved.Token)
-		clearSessionCookie(c, h.config.BasePath, resolved.CookieKind)
-		return entities.CPAAPIKey{}, false
-	}
-	return row, true
 }
 
 func (h *authHandler) logout(c *gin.Context) {

@@ -28,16 +28,8 @@ func providerKeyEndpoint(providerType string) (path string, payloadKey string, k
 	switch strings.ToLower(strings.TrimSpace(providerType)) {
 	case "codex":
 		return cpaManagementCodexAPIKeyEndpoint, "codex-api-key", "codex api keys", true
-	case "xai":
-		return cpaManagementXAIAPIKeyEndpoint, "xai-api-key", "xai api keys", true
-	case "gemini":
-		return cpaManagementGeminiAPIKeyEndpoint, "gemini-api-key", "gemini api keys", true
-	case "gemini-interactions":
-		return cpaManagementInteractionsAPIKeyEndpoint, "interactions-api-key", "interactions api keys", true
 	case "claude":
 		return cpaManagementClaudeAPIKeyEndpoint, "claude-api-key", "claude api keys", true
-	case "vertex":
-		return cpaManagementVertexAPIKeyEndpoint, "vertex-api-key", "vertex api keys", true
 	default:
 		return "", "", "", false
 	}

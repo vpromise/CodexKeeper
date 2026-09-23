@@ -76,10 +76,10 @@ func TestCheckerSelectsLatestVersion(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
-				case "/repos/Willxup/cpa-usage-keeper/releases/latest":
+				case "/repos/vpromise/CodexKeeper/releases/latest":
 					w.WriteHeader(tc.releaseStatus)
 					_, _ = w.Write([]byte(tc.release))
-				case "/repos/Willxup/cpa-usage-keeper/tags":
+				case "/repos/vpromise/CodexKeeper/tags":
 					if tc.releaseStatus == http.StatusOK {
 						t.Error("tags requested despite an available latest release")
 					}

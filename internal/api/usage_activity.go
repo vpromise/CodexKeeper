@@ -127,24 +127,6 @@ func registerUsageActivityRoute(router gin.IRoutes, usageProvider service.UsageP
 	})
 }
 
-func registerKeyActivityRoute(router gin.IRoutes, usageProvider service.UsageProvider) {
-	router.GET("/key-activity", func(c *gin.Context) {
-		session, _, ok := activeAPIKeyViewerContext(c)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		// Key Viewer 复用公共时间参数，但客户端 api_key_id 无论内容为何都不参与解析或过滤。
-		filter, err := parseKeyUsageActivityFilterQuery(c.Request, time.Now())
-		if err != nil {
-			writeUsageFilterParseError(c, err)
-			return
-		}
-		filter.APIKeyID = fmt.Sprintf("%d", session.CPAAPIKeyID)
-		writeUsageActivityResponse(c, usageProvider, filter)
-	})
-}
-
 func writeUsageActivityResponse(c *gin.Context, usageProvider service.UsageProvider, filter servicedto.UsageFilter) {
 	if usageProvider == nil {
 		writeInternalError(c, "get usage activity failed", fmt.Errorf("usage provider is unavailable"))

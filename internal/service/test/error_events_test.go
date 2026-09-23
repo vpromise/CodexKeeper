@@ -72,7 +72,7 @@ func TestErrorEventServiceStoresEveryCurrentPayloadField(t *testing.T) {
 func TestErrorEventServicePreservesAbsentOptionalSnapshotsAsNull(t *testing.T) {
 	db := openUsageServiceTestDatabase(t)
 
-	payload := `{"timestamp":"2026-08-20T12:00:00+08:00","auth_index":"stable-auth-index","status_code":500,"body":"failed","auth_status":{"status":"error","disabled":false,"unavailable":false}}`
+	payload := `{"provider":"codex","timestamp":"2026-08-20T12:00:00+08:00","auth_index":"stable-auth-index","status_code":500,"body":"failed","auth_status":{"status":"error","disabled":false,"unavailable":false}}`
 	if err := service.NewErrorEventService(db).StoreErrorEvent(context.Background(), payload, time.Now()); err != nil {
 		t.Fatalf("StoreErrorEvent returned error: %v", err)
 	}

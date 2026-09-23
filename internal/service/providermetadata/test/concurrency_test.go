@@ -11,7 +11,7 @@ import (
 	"cpa-usage-keeper/internal/service/providermetadata"
 )
 
-var registrySourceOrder = []string{"codex", "xai", "gemini", "gemini-interactions", "claude", "vertex", "meta", "openai"}
+var registrySourceOrder = []string{"codex", "claude"}
 
 // gatedProviderFetcher 用独立 gate 控制所有 endpoint 的进入和完成时序。
 type gatedProviderFetcher struct {
@@ -73,35 +73,8 @@ func (f *gatedProviderFetcher) FetchCodexAPIKeys(ctx context.Context) (*response
 	return f.fetchStandard(ctx, "codex")
 }
 
-func (f *gatedProviderFetcher) FetchXAIAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandard(ctx, "xai")
-}
-
-func (f *gatedProviderFetcher) FetchGeminiAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandard(ctx, "gemini")
-}
-
-func (f *gatedProviderFetcher) FetchInteractionsAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandard(ctx, "gemini-interactions")
-}
-
 func (f *gatedProviderFetcher) FetchClaudeAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
 	return f.fetchStandard(ctx, "claude")
-}
-
-func (f *gatedProviderFetcher) FetchVertexAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandard(ctx, "vertex")
-}
-
-func (f *gatedProviderFetcher) FetchMetaAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandard(ctx, "meta")
-}
-
-func (f *gatedProviderFetcher) FetchOpenAICompatibility(ctx context.Context) (*response.OpenAICompatibilityResult, error) {
-	if err := f.wait(ctx, "openai"); err != nil {
-		return nil, err
-	}
-	return &response.OpenAICompatibilityResult{Payload: []providerconfig.OpenAICompatibilityConfig{{Name: "openai", APIKeyEntries: []providerconfig.OpenAIApiKeyEntry{{APIKey: "openai-key", AuthIndex: "openai-auth"}}}}}, nil
 }
 
 func standardSuccessResult(source string) *response.ProviderKeyConfigResult {

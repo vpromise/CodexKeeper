@@ -86,17 +86,6 @@ describe('useUsageActivityData', () => {
     expect(latest?.activity?.window).toBe('week');
   });
 
-  it('uses the Key endpoint without an external API key scope', async () => {
-    apiMocks.fetchKeyActivity.mockResolvedValue(activityFor('day'));
-    const request = { range: '8h' as const };
-
-    await renderOptions({ viewer: 'key', request, apiKeyId: '999' });
-
-    expect(apiMocks.fetchKeyActivity).toHaveBeenCalledWith(expect.objectContaining({ request }));
-    expect(apiMocks.fetchKeyActivity.mock.calls[0][0].apiKeyId).toBeUndefined();
-    expect(apiMocks.fetchUsageActivity).not.toHaveBeenCalled();
-  });
-
   it('loads the one-year Activity-specific window without a shared range', async () => {
     apiMocks.fetchUsageActivity.mockResolvedValue(activityFor('year'));
     const request = { window: 'year' as const };
@@ -219,8 +208,8 @@ describe('useUsageActivityData', () => {
 
   it('keeps Activity errors local and handles viewer authentication errors', async () => {
     const onAuthRequired = vi.fn();
-    apiMocks.fetchKeyActivity.mockRejectedValueOnce(new ApiError('unauthorized', 401));
-    await renderOptions({ viewer: 'key', request: { range: '8h' }, onAuthRequired });
+    apiMocks.fetchUsageActivity.mockRejectedValueOnce(new ApiError('unauthorized', 401));
+    await renderOptions({ viewer: 'admin', request: { range: '8h' }, onAuthRequired });
     expect(onAuthRequired).toHaveBeenCalledTimes(1);
     expect(latest?.error).toBe('AUTH_REQUIRED');
   });

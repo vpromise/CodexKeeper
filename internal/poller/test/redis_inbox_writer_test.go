@@ -12,6 +12,7 @@ import (
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/poller"
 	"cpa-usage-keeper/internal/repository"
+
 	"gorm.io/gorm"
 )
 
@@ -28,9 +29,9 @@ func TestClassifyRedisControlMessage(t *testing.T) {
 		{name: "refresh", raw: `{"refresh":true}`, control: true, support: true, refresh: true},
 		{name: "both ignored", raw: `{"support_refresh":true,"refresh":true}`, control: false},
 		{name: "false ignored", raw: `{"support_refresh":false,"refresh":false}`, control: false},
-		{name: "usage passthrough", raw: `{"request_id":"req-1","refresh":false}`, control: false},
-		{name: "usage refresh true passthrough", raw: `{"request_id":"req-1","refresh":true}`, control: false},
-		{name: "usage support true passthrough", raw: `{"request_id":"req-1","support_refresh":true}`, control: false},
+		{name: "usage passthrough", raw: `{"provider":"codex","request_id":"req-1","refresh":false}`, control: false},
+		{name: "usage refresh true passthrough", raw: `{"provider":"codex","request_id":"req-1","refresh":true}`, control: false},
+		{name: "usage support true passthrough", raw: `{"provider":"codex","request_id":"req-1","support_refresh":true}`, control: false},
 		{name: "invalid passthrough", raw: `{not-json`, control: false},
 		{name: "array passthrough", raw: `[{"refresh":true}]`, control: false},
 	}
@@ -71,7 +72,7 @@ func TestRedisInboxWriterPersistsMessagesWithSource(t *testing.T) {
 	receivedAt := time.Date(2026, 5, 21, 12, 0, 0, 0, time.UTC)
 	writer := poller.NewRedisInboxWriter(db)
 
-	inserted, err := writer.Insert(context.Background(), poller.RedisIngestSourceSubscribe, []string{`{"request_id":"one"}`}, receivedAt)
+	inserted, err := writer.Insert(context.Background(), poller.RedisIngestSourceSubscribe, []string{`{"provider":"codex","request_id":"one"}`}, receivedAt)
 	if err != nil {
 		t.Fatalf("Insert returned error: %v", err)
 	}
@@ -89,7 +90,7 @@ func TestRedisInboxWriterPersistsMessagesWithSource(t *testing.T) {
 	if rows[0].Source != poller.RedisIngestSourceSubscribe {
 		t.Fatalf("expected source %q, got %q", poller.RedisIngestSourceSubscribe, rows[0].Source)
 	}
-	if rows[0].RawMessage != `{"request_id":"one"}` {
+	if rows[0].RawMessage != `{"provider":"codex","request_id":"one"}` {
 		t.Fatalf("unexpected raw message %q", rows[0].RawMessage)
 	}
 	if !rows[0].PoppedAt.Equal(receivedAt) {
@@ -105,18 +106,18 @@ func TestControlAwareRedisInboxWriterFiltersBatches(t *testing.T) {
 	}{
 		{
 			name: "mixed control and usage", source: poller.RedisIngestSourceSubscribe,
-			messages:    []string{`{"support_refresh":true}`, `{"refresh":true}`, `{"request_id":"usage"}`, `{"request_id":"usage-refresh","refresh":true}`},
-			wantRaw:     []string{`{"request_id":"usage"}`, `{"request_id":"usage-refresh","refresh":true}`},
+			messages:    []string{`{"support_refresh":true}`, `{"refresh":true}`, `{"provider":"codex","request_id":"usage"}`, `{"provider":"codex","request_id":"usage-refresh","refresh":true}`},
+			wantRaw:     []string{`{"provider":"codex","request_id":"usage"}`, `{"provider":"codex","request_id":"usage-refresh","refresh":true}`},
 			wantSupport: 2, wantRefresh: 1,
 		},
 		{
-			name: "control only", source: poller.RedisIngestSourceHTTPPull,
+			name: "control only", source: poller.RedisIngestSourceRedisPull,
 			messages: []string{`{"refresh":true}`}, wantSupport: 1, wantRefresh: 1,
 		},
 		{
-			name: "empty and null payloads", source: poller.RedisIngestSourceHTTPPull,
-			messages: []string{"", " \n\t", " null ", `{"request_id":"usage"}`},
-			wantRaw:  []string{`{"request_id":"usage"}`},
+			name: "empty and null payloads", source: poller.RedisIngestSourceRedisPull,
+			messages: []string{"", " \n\t", " null ", `{"provider":"codex","request_id":"usage"}`},
+			wantRaw:  []string{`{"provider":"codex","request_id":"usage"}`},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

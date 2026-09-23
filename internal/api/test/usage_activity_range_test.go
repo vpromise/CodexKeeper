@@ -228,24 +228,3 @@ func TestUsageActivityReturnsInternalErrorWhenUsageProviderIsMissing(t *testing.
 		t.Fatalf("missing provider status=%d, want 500: %s", response.Code, response.Body.String())
 	}
 }
-
-func TestKeyActivityForcesViewerAPIKeyAndIgnoresEventsOnlyFilters(t *testing.T) {
-	provider := &usageActivityRouteStub{
-		UsageProvider: &usageEventsStub{},
-		activity: &servicedto.UsageActivitySnapshot{
-			Window:  servicedto.UsageActivityWindowWeek,
-			Grain:   "medium",
-			Rows:    7,
-			Columns: 52,
-			Blocks:  []servicedto.UsageActivityBlock{},
-		},
-	}
-	router, cookie := newUsageViewerRouter(t, provider)
-	activityResponse := serveAPIGet(router, "/api/v1/key-activity?window=year&api_key_id=not-a-number&page=0&result=bogus", cookie)
-	if activityResponse.Code != http.StatusOK {
-		t.Fatalf("key Activity status=%d body=%s", activityResponse.Code, activityResponse.Body.String())
-	}
-	if provider.lastFilter.APIKeyID != "42" || provider.lastFilter.ActivityWindow != servicedto.UsageActivityWindowYear {
-		t.Fatalf("key Activity should force the viewer API key and preserve time semantics: %+v", provider.lastFilter)
-	}
-}

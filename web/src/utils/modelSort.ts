@@ -1,5 +1,5 @@
 // 模型列表和下拉框共用的系列优先级；调整此处即可改变优先展示顺序。
-const MODEL_FAMILY_PRIORITY: readonly string[] = ['gpt', 'claude', 'gemini'];
+const MODEL_FAMILY_PRIORITY: readonly string[] = ['gpt', 'claude', 'codex'];
 
 const modelNameCollator = new Intl.Collator('en', {
   numeric: true,

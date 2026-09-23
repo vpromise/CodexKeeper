@@ -289,41 +289,10 @@ func pricingModelFamily(model string) string {
 	identity := strings.ToLower(stripPricingModelPrefix(model))
 	normalized := normalizePricingModelKey(strings.TrimPrefix(identity, "ft:"))
 	switch {
-	case strings.HasPrefix(normalized, "gpt") || strings.HasPrefix(normalized, "chatgpt") || strings.HasPrefix(normalized, "o1") || strings.HasPrefix(normalized, "o3") || strings.HasPrefix(normalized, "o4"):
+	case strings.HasPrefix(normalized, "codex") || strings.HasPrefix(normalized, "gpt") || strings.HasPrefix(normalized, "chatgpt") || strings.HasPrefix(normalized, "o1") || strings.HasPrefix(normalized, "o3") || strings.HasPrefix(normalized, "o4"):
 		return "openai"
 	case strings.HasPrefix(normalized, "claude"):
 		return "anthropic"
-	case strings.HasPrefix(normalized, "deepseek"):
-		return "deepseek"
-	case strings.HasPrefix(normalized, "glm"):
-		return "glm"
-	case strings.HasPrefix(normalized, "qwen"):
-		return "qwen"
-	case strings.HasPrefix(normalized, "gemini"):
-		return "google"
-	case strings.HasPrefix(normalized, "grok"):
-		return "xai"
-	case strings.HasPrefix(normalized, "minimax"):
-		return "minimax"
-	case strings.HasPrefix(normalized, "moonshot") || strings.HasPrefix(normalized, "kimi"):
-		return "moonshot"
-	case strings.HasPrefix(normalized, "doubao"):
-		return "doubao"
-	// Mistral 的子系列不都以厂商品牌开头，open/labs 仍属于模型身份。
-	case strings.HasPrefix(normalized, "mistral"), strings.HasPrefix(normalized, "devstral"),
-		strings.HasPrefix(normalized, "codestral"), strings.HasPrefix(normalized, "magistral"),
-		strings.HasPrefix(normalized, "ministral"), strings.HasPrefix(normalized, "mixtral"),
-		strings.HasPrefix(normalized, "pixtral"), strings.HasPrefix(normalized, "voxtral"),
-		strings.HasPrefix(normalized, "openmistral"), strings.HasPrefix(normalized, "openmixtral"),
-		strings.HasPrefix(normalized, "opencodestral"), strings.HasPrefix(normalized, "labsdevstral"),
-		strings.HasPrefix(normalized, "labsleanstral"):
-		return "mistral"
-	case strings.HasPrefix(normalized, "command"):
-		return "cohere"
-	case strings.HasPrefix(normalized, "llama"):
-		return "llama"
-	case strings.HasPrefix(normalized, "xiaomi"):
-		return "xiaomi"
 	default:
 		return ""
 	}
@@ -332,33 +301,9 @@ func pricingModelFamily(model string) string {
 func officialPricingProvidersByFamily(family string) []string {
 	switch family {
 	case "openai":
-		return []string{"openai", "azure", "azure-cognitive-services"}
+		return []string{"openai"}
 	case "anthropic":
-		return []string{"anthropic", "google-vertex-anthropic"}
-	case "deepseek":
-		return []string{"deepseek", "siliconflow-cn", "siliconflow"}
-	case "glm":
-		return []string{"zai", "zhipuai", "zai-coding-plan", "zhipuai-coding-plan"}
-	case "qwen":
-		return []string{"alibaba-cn", "alibaba", "aliyun-bailian"}
-	case "google":
-		return []string{"google", "google-vertex"}
-	case "xai":
-		return []string{"xai"}
-	case "minimax":
-		return []string{"minimax-cn", "minimax", "minimax-cn-coding-plan", "minimax-coding-plan"}
-	case "moonshot":
-		return []string{"moonshotai-cn", "moonshotai", "kimi-for-coding"}
-	case "doubao":
-		return []string{"doubao"}
-	case "mistral":
-		return []string{"mistral"}
-	case "cohere":
-		return []string{"cohere"}
-	case "llama":
-		return []string{"llama"}
-	case "xiaomi":
-		return []string{"xiaomi-token-plan-cn", "xiaomi", "xiaomi-token-plan-sgp", "xiaomi-token-plan-ams"}
+		return []string{"anthropic"}
 	default:
 		return nil
 	}
@@ -370,26 +315,6 @@ func pricingProviderRank(providerID string) int {
 		return 0
 	case "anthropic":
 		return 1
-	case "deepseek":
-		return 2
-	case "google":
-		return 3
-	case "alibaba-cn", "alibaba":
-		return 4
-	case "zai", "zhipuai":
-		return 5
-	case "xai":
-		return 6
-	case "minimax-cn", "minimax", "minimax-cn-coding-plan", "minimax-coding-plan":
-		return 7
-	case "xiaomi-token-plan-cn", "xiaomi-token-plan-sgp", "xiaomi-token-plan-ams", "xiaomi":
-		return 8
-	case "302ai":
-		return 9
-	case "openrouter":
-		return 10
-	case "vercel":
-		return 11
 	default:
 		return 100
 	}

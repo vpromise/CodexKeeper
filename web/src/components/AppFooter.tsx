@@ -46,14 +46,14 @@ export function AppFooter({ version: fixedVersion, loadVersion = true }: { versi
     <footer className="app-footer">
       <div className="app-footer-line app-footer-meta">
         <span>© 2026</span>
-        <a href={GITHUB_REPOSITORY_URL} target="_blank" rel="noreferrer">CPA Usage Keeper</a>
+        <a href={GITHUB_REPOSITORY_URL} target="_blank" rel="noreferrer">CodexKeeper</a>
         <span>·</span>
         <a href={`${GITHUB_REPOSITORY_URL}/blob/main/LICENSE`} target="_blank" rel="noreferrer">License</a>
         <span>·</span>
         <a href={CLIPROXYAPI_REPOSITORY_URL} target="_blank" rel="noreferrer">CLIProxyAPI Integration</a>
       </div>
       <div className="app-footer-line app-footer-powered">
-        <span>Powered By</span>
+        <span>Based on Keeper by</span>
         <a href={GITHUB_PROFILE_URL} target="_blank" rel="noreferrer" aria-label="Willxup GitHub profile">
           <IconGithub size={16} aria-hidden="true" />
           <span>Willxup</span>

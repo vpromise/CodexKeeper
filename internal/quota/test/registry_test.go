@@ -33,7 +33,7 @@ func TestProviderRegistrySupportsQuotaIdentityTypes(t *testing.T) {
 func TestDefaultProviderRegistrySupportedTypes(t *testing.T) {
 	registry := quota.NewDefaultProviderRegistry(&recordingManagementCaller{}, quota.DefaultProviderConfigs())
 	for identityType, want := range map[string]bool{
-		"antigravity": true, "codex": true, "gemini-cli": true, "claude": true, "kimi": true, "xai": true,
+		"antigravity": false, "codex": true, "gemini-cli": false, "claude": true, "kimi": false, "xai": false,
 		"gemini-cli-code-assist": false, "vertex": false,
 	} {
 		if _, ok := registry.Provider(identityType); ok != want {

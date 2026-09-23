@@ -12,7 +12,7 @@ export function BrandLink({ className = '' }: BrandLinkProps) {
   return (
     <a className={linkClassName} href={GITHUB_REPOSITORY_URL} target="_blank" rel="noreferrer">
       <img className={styles.brandMark} src={keeperIconUrl} alt="" aria-hidden="true" />
-      <span className={styles.brandWord}>KEEPER</span>
+      <span className={styles.brandWord}>CodexKeeper</span>
     </a>
   );
 }

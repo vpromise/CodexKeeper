@@ -24,7 +24,7 @@ describe('RequestEventsDetailsCard model filter ordering', () => {
   });
 
   it.each(['__all__', 'gpt-5.9', 'openai/gpt-5.9'])('sorts models and preserves the selected filter %s', async (selectedModel) => {
-    const models = ['qwen-3', 'gpt-5.6-terra', 'gemini-2.5-pro', 'team/anthropic/claude-opus-4.6',
+    const models = ['qwen-3', 'gpt-5.6-terra', 'codex-2.5-pro', 'team/anthropic/claude-opus-4.6',
       'gpt-5.10', 'deepseek-v3', 'gpt-5.6', 'team/openai/gpt-5.6-sol', 'openai/gpt-4o'];
     const originalModels = [...models];
     const onModelFilterChange = vi.fn();
@@ -50,7 +50,7 @@ describe('RequestEventsDetailsCard model filter ordering', () => {
       'gpt-5.6-terra',
       'openai/gpt-4o',
       'team/anthropic/claude-opus-4.6',
-      'gemini-2.5-pro',
+      'codex-2.5-pro',
       'deepseek-v3',
       'qwen-3',
     ]);

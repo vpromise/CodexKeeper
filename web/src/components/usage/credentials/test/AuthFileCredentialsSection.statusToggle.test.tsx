@@ -53,10 +53,10 @@ describe('AuthFileCredentialsSection status toggle gating', () => {
     expect(html).not.toContain('tabindex="0"')
   })
 
-  it('gates the toggle by brand icon mapping rather than by the single-credential whitelist', () => {
+  it('supports the two native credential types', () => {
     // kimi、antigravity、gemini-cli、openai 都是 CPA 认证文件里的真实类型：有品牌图标，但不在整条停用的白名单里。
     // 只有这些类型能把「按品牌图标判定」与「按白名单判定」两种实现区分开。
-    for (const type of ['kimi', 'antigravity', 'gemini-cli', 'openai']) {
+    for (const type of ['claude', 'codex']) {
       expect(renderSection([createRow({ type })])).toContain('data-credential-status-toggle="true"')
     }
   })

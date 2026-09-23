@@ -1,26 +1,10 @@
-import antigravityIcon from '@/assets/icons/antigravity.svg'
 import claudeIcon from '@/assets/icons/claude.svg'
 import codexIcon from '@/assets/icons/codex.svg'
-import devinIcon from '@/assets/icons/devin.svg'
-import geminiIcon from '@/assets/icons/gemini.svg'
-import grokIcon from '@/assets/icons/grok.svg'
-import kimiIcon from '@/assets/icons/kimi.svg'
-import metaIcon from '@/assets/icons/meta.svg'
-import openaiIcon from '@/assets/icons/openai.svg'
-import vertexIcon from '@/assets/icons/vertex.svg'
 import styles from './ProviderBrandIcon.module.scss'
 
 export const PROVIDER_BRAND_ICON_KEYS = [
-  'antigravity',
   'claude',
   'codex',
-  'devin',
-  'gemini',
-  'kimi',
-  'meta',
-  'openai',
-  'vertex',
-  'xai',
 ] as const
 
 export type ProviderBrandIconKey = typeof PROVIDER_BRAND_ICON_KEYS[number]
@@ -32,34 +16,16 @@ export interface ProviderBrandIconProps {
   className?: string
 }
 
-// 仅映射 CPA 能稳定提供 identity 的类型；Gemini CLI 兼容行与 Interactions 复用 Gemini 品牌。
+// Only native Codex and Claude identities have provider branding.
 const providerBrandIconKeyByType: Readonly<Record<string, ProviderBrandIconKey>> = {
-  antigravity: 'antigravity',
   claude: 'claude',
   codex: 'codex',
-  devin: 'devin',
-  gemini: 'gemini',
-  'gemini-cli': 'gemini',
-  'gemini-interactions': 'gemini',
-  kimi: 'kimi',
-  meta: 'meta',
-  openai: 'openai',
-  vertex: 'vertex',
-  xai: 'xai',
 }
 
 // 品牌资源取自 Lobe Icons；统一复用其 Avatar 圆形容器、背景色与缩放比例。
 const providerBrandIconUrlByKey: Readonly<Record<ProviderBrandIconKey, string>> = {
-  antigravity: antigravityIcon,
   claude: claudeIcon,
   codex: codexIcon,
-  devin: devinIcon,
-  gemini: geminiIcon,
-  kimi: kimiIcon,
-  meta: metaIcon,
-  openai: openaiIcon,
-  vertex: vertexIcon,
-  xai: grokIcon,
 }
 
 export function providerBrandIconKey(providerType: string | null | undefined): ProviderBrandIconKey | undefined {

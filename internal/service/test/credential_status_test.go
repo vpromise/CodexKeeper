@@ -13,6 +13,7 @@ import (
 	"cpa-usage-keeper/internal/cpa/dto/response"
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/service"
+
 	"gorm.io/gorm"
 )
 
@@ -316,9 +317,9 @@ func TestCredentialStatusServiceAuthFileRequiresAuthIndex(t *testing.T) {
 
 func TestCredentialStatusServiceProviderTogglesWildcardExcludedModel(t *testing.T) {
 	db := openMetadataTestDatabase(t, "credential-status-provider.db")
-	seedProviderCredential(t, db, "gemini", "idx-gemini", "secret-gemini")
+	seedProviderCredential(t, db, "codex", "idx-gemini", "secret-gemini")
 	client := &credentialStatusClientStub{providerPayloads: map[string]*response.ProviderKeyConfigResult{
-		"gemini": {
+		"codex": {
 			StatusCode: http.StatusOK,
 			Payload: []providerconfig.ProviderKeyConfig{
 				{APIKey: "secret-other", AuthIndex: "idx-other", ExcludedModels: []string{"gpt-5"}},
@@ -341,7 +342,7 @@ func TestCredentialStatusServiceProviderTogglesWildcardExcludedModel(t *testing.
 	}
 	patch := client.providerCalls[0]
 	// 必须按 CPA 配置数组下标改，值匹配在重复 API Key 时会命中第一条。
-	if patch.providerType != "gemini" || patch.index != 1 {
+	if patch.providerType != "codex" || patch.index != 1 {
 		t.Fatalf("unexpected provider patch target: %+v", patch)
 	}
 	// 停用只追加精确 "*"，必须保留用户已有规则。
@@ -408,13 +409,13 @@ func TestCredentialStatusServiceProviderTargetsSecondDuplicateKeyByIndex(t *test
 		Name:      "Gemini second",
 		AuthType:  entities.UsageIdentityAuthTypeAIProvider,
 		Identity:  "idx-second",
-		Type:      "gemini",
+		Type:      "codex",
 		LookupKey: "shared-key",
 		BaseURL:   "https://second.example/v1",
 		IsDeleted: false,
 	})
 	client := &credentialStatusClientStub{providerPayloads: map[string]*response.ProviderKeyConfigResult{
-		"gemini": {
+		"codex": {
 			StatusCode: http.StatusOK,
 			Payload: []providerconfig.ProviderKeyConfig{
 				{APIKey: "shared-key", AuthIndex: "idx-first", BaseURL: "https://first.example/v1", ExcludedModels: []string{"first-model"}},
@@ -563,9 +564,9 @@ func TestCredentialStatusServiceRequestsMetadataRefreshWhenLocalWriteFailsAfterU
 
 func TestCredentialStatusServiceSerializesConcurrentProviderToggles(t *testing.T) {
 	db := openMetadataTestDatabase(t, "credential-status-concurrent.db")
-	seedProviderCredential(t, db, "gemini", "idx-gemini", "secret-gemini")
+	seedProviderCredential(t, db, "codex", "idx-gemini", "secret-gemini")
 	client := &credentialStatusClientStub{providerPayloads: map[string]*response.ProviderKeyConfigResult{
-		"gemini": {StatusCode: http.StatusOK, Payload: []providerconfig.ProviderKeyConfig{{APIKey: "secret-gemini", AuthIndex: "idx-gemini", ExcludedModels: []string{"gpt-5"}}}},
+		"codex": {StatusCode: http.StatusOK, Payload: []providerconfig.ProviderKeyConfig{{APIKey: "secret-gemini", AuthIndex: "idx-gemini", ExcludedModels: []string{"gpt-5"}}}},
 	}}
 	// 拉长读窗口，缺少服务层串行化时四次读取必然全部发生在任何写入之前。
 	client.providerFetchDelay = 20 * time.Millisecond

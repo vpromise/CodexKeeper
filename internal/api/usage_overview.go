@@ -174,51 +174,6 @@ type usageOverviewCacheLevelPoint struct {
 	InputTokens         int64    `json:"input_tokens"`
 }
 
-func registerKeyOverviewRoute(router gin.IRoutes, usageProvider service.UsageProvider) {
-	router.GET("/key-overview", func(c *gin.Context) {
-		session, _, ok := activeAPIKeyViewerContext(c)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		filter, err := parseKeyUsageOverviewTimeFilterQuery(c.Request, timeutil.NormalizeStorageTime(time.Now()))
-		if err != nil {
-			writeUsageFilterParseError(c, err)
-			return
-		}
-		filter.APIKeyID = fmt.Sprintf("%d", session.CPAAPIKeyID)
-		writeUsageOverviewResponse(c, usageProvider, filter)
-	})
-	router.GET("/key-overview/comparisons", func(c *gin.Context) {
-		session, viewerKey, ok := activeAPIKeyViewerContext(c)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		filter, err := parseKeyUsageOverviewTimeFilterQuery(c.Request, timeutil.NormalizeStorageTime(time.Now()))
-		if err != nil {
-			writeUsageFilterParseError(c, err)
-			return
-		}
-		filter.APIKeyID = fmt.Sprintf("%d", session.CPAAPIKeyID)
-		writeUsageOverviewComparisonsResponse(c, usageProvider, filter, nil, true, &viewerKey)
-	})
-	router.GET("/key-overview/realtime", func(c *gin.Context) {
-		session, _, ok := activeAPIKeyViewerContext(c)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		filter, err := parseKeyUsageRealtimeFilterQuery(c.Request, timeutil.NormalizeStorageTime(time.Now()))
-		if err != nil {
-			writeUsageFilterParseError(c, err)
-			return
-		}
-		filter.APIKeyID = fmt.Sprintf("%d", session.CPAAPIKeyID)
-		writeKeyUsageOverviewRealtimeResponse(c, usageProvider, filter)
-	})
-}
-
 func registerUsageOverviewRoute(router gin.IRoutes, usageProvider service.UsageProvider, cpaAPIKeyProvider service.CPAAPIKeyProvider) {
 	router.GET("/usage/overview", func(c *gin.Context) {
 		if usageProvider == nil {

@@ -25,6 +25,7 @@ import (
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/service"
 	servicedto "cpa-usage-keeper/internal/service/dto"
+
 	"gorm.io/gorm"
 )
 
@@ -586,8 +587,8 @@ func TestUsageEventRequestLogDownloadTokenAuthBoundary(t *testing.T) {
 		t.Fatalf("create viewer session: %v", err)
 	}
 	viewerResp := serveCredentialMutation(router, http.MethodPost, "/cpa/api/v1/usage/events/42/request-log/download-token", "", &http.Cookie{Name: "cpa_usage_keeper_session", Value: viewerToken})
-	if viewerResp.Code != http.StatusForbidden {
-		t.Fatalf("expected viewer token issue status 403, got %d body=%s", viewerResp.Code, viewerResp.Body.String())
+	if viewerResp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected legacy viewer token issue status 401, got %d body=%s", viewerResp.Code, viewerResp.Body.String())
 	}
 
 	adminToken, _, err := sessions.Create()

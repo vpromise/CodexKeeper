@@ -66,18 +66,18 @@ describe('credential list preferences wiring', () => {
       version: 1,
       sort: 'last_used_at',
       pageSize: 50,
-      providerFilter: 'openai',
+      providerFilter: 'codex',
     }))
     await act(async () => root.render(<Harness />))
 
     expect(latest?.aiProviderSort).toBe('last_used_at')
     expect(latest?.aiProviderPageSize).toBe(50)
-    expect(latest?.aiProviderProviderFilter).toBe('openai')
+    expect(latest?.aiProviderProviderFilter).toBe('codex')
 
     const aiProviderRequest = requestFor(fetchMock, '2')
     expect(aiProviderRequest?.get('sort')).toBe('last_used_at')
     expect(aiProviderRequest?.get('page_size')).toBe('50')
-    expect(aiProviderRequest?.get('type')).toBe('openai')
+    expect(aiProviderRequest?.get('type')).toBe('codex')
 
     // Auth 文件分区没有存过任何偏好，必须保持自己的默认值。
     expect(latest?.authFileSort).toBe('priority')

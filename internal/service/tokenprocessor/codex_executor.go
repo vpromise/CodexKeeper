@@ -25,7 +25,7 @@ func (responsesInclusiveHandler) Normalize(context normalizationContext) handler
 	authority := totalAuthorityZeroOnly
 	if len(violations) == 0 && context.resolution.evidenceStrength == EvidenceParserContract &&
 		!context.clamped.hasAny("input_tokens", "output_tokens", "reasoning_tokens", "cache_read_tokens", "cache_creation_tokens") {
-		// 已知 Codex/xAI executor 才证明 Input/Output 已含子项，允许 final reconciler 强校验 Total。
+		// Native Codex executors report inclusive totals, allowing strict total validation.
 		authority = totalAuthorityCanonical
 	}
 	// cache alias 或父子校验字段损坏时只撤销非零 Total 强纠错；旧零值补法仍按自己的 Input/Output 依赖执行。

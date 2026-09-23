@@ -66,10 +66,6 @@ const CREDENTIAL_EXPIRY_TOOLTIP_VIEWPORT_PADDING = 8
 const QUOTA_ERROR_MESSAGE_MAX_LENGTH = 96
 const QUOTA_ERROR_PARSE_MAX_DEPTH = 10
 const AUTH_FILE_DISPLAY_MODE_STORAGE_KEY = 'cpa.credentials.authFiles.displayMode'
-const ANTIGRAVITY_QUOTA_GROUP_KEYS = new Set([
-  'antigravity-gemini-models',
-  'antigravity-claude-and-gpt-models',
-])
 export const INSPECTION_RESULT_PAGE_SIZE_OPTIONS = [10, 20, 50] as const
 const DEFAULT_INSPECTION_RESULT_PAGE_SIZE = INSPECTION_RESULT_PAGE_SIZE_OPTIONS[0]
 const INSPECTION_SELECTABLE_RESULT_STATUSES = new Set<InspectionResultStatusFilter>([
@@ -1672,71 +1668,8 @@ export function AuthFileQuotaPanel({ row, quotaUsageMode, timeZone }: { row: Aut
   return (
     <div className={styles.credentialQuotaPanel}>
       <div className={styles.credentialQuotaBars}>
-        {/* 只有 canonical Antigravity 组提升为共享标题；其它 provider 继续沿用原始扁平 QuotaBar。 */}
-        {authFileQuotaPanelItems(row.displayQuotas).map((item) => item.kind === 'group'
-          ? <AntigravityQuotaGroup key={item.renderKey} group={item} quotaUsageMode={quotaUsageMode} timeZone={timeZone} />
-          : <QuotaBar key={item.quota.key} quota={item.quota} quotaUsageMode={quotaUsageMode} timeZone={timeZone} tooltipAlignRight={item.tooltipAlignRight} />)}
-      </div>
-    </div>
-  )
-}
-
-type AuthFileQuotaPanelItem =
-  | { kind: 'quota'; quota: DisplayQuota; tooltipAlignRight: boolean }
-  | AntigravityQuotaGroupItem
-
-type AntigravityQuotaGroupItem = {
-  kind: 'group'
-  renderKey: string
-  groupKey: string
-  groupLabel: string
-  groupDescription?: string
-  quotas: DisplayQuota[]
-}
-
-function authFileQuotaPanelItems(quotas: DisplayQuota[]): AuthFileQuotaPanelItem[] {
-  const items: AuthFileQuotaPanelItem[] = []
-  let flatColumn = 0
-  for (const quota of quotas) {
-    const groupKey = quota.groupKey?.trim() ?? ''
-    const groupLabel = quota.groupLabel?.trim() ?? ''
-    if (quota.scope !== 'quota_group' || !ANTIGRAVITY_QUOTA_GROUP_KEYS.has(groupKey) || !groupLabel) {
-      items.push({ kind: 'quota', quota, tooltipAlignRight: flatColumn === 1 })
-      flatColumn = (flatColumn + 1) % 2
-      continue
-    }
-    // 分组块横跨两列；只合并相邻同组行，并让后续扁平行重新从左列开始。
-    flatColumn = 0
-    const previous = items.at(-1)
-    if (previous?.kind === 'group' && previous.groupKey === groupKey) {
-      previous.quotas.push(quota)
-      if (!previous.groupDescription && quota.groupDescription?.trim()) {
-        previous.groupDescription = quota.groupDescription
-      }
-      continue
-    }
-    const group: AntigravityQuotaGroupItem = {
-      kind: 'group',
-      renderKey: `${groupKey}:${quota.key}`,
-      groupKey,
-      groupLabel,
-      groupDescription: quota.groupDescription,
-      quotas: [quota],
-    }
-    items.push(group)
-  }
-  return items
-}
-
-function AntigravityQuotaGroup({ group, quotaUsageMode, timeZone }: { group: AntigravityQuotaGroupItem; quotaUsageMode: QuotaUsageMode; timeZone?: string }) {
-  return (
-    <div className={styles.credentialQuotaGroupBlock} data-quota-group={group.groupKey}>
-      <div className={styles.credentialQuotaGroupHeader}>
-        <QuotaGroupLabel label={group.groupLabel} description={group.groupDescription} />
-      </div>
-      <div className={styles.credentialQuotaGroupBars}>
-        {group.quotas.map((quota) => (
-          <QuotaBar key={quota.key} quota={quota} quotaUsageMode={quotaUsageMode} timeZone={timeZone} showGroupMetadata={false} />
+        {row.displayQuotas.map((quota, index) => (
+          <QuotaBar key={quota.key} quota={quota} quotaUsageMode={quotaUsageMode} timeZone={timeZone} tooltipAlignRight={index % 2 === 1} />
         ))}
       </div>
     </div>

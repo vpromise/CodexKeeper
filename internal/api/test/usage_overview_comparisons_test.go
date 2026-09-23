@@ -10,14 +10,13 @@ import (
 	"time"
 
 	. "cpa-usage-keeper/internal/api"
-	"cpa-usage-keeper/internal/auth"
 	"cpa-usage-keeper/internal/config"
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/repository"
 	"cpa-usage-keeper/internal/service"
 )
 
-func TestOverviewComparisonAPIUsesAliasesAndViewerScope(t *testing.T) {
+func TestOverviewComparisonAPIUsesAliases(t *testing.T) {
 	db, err := repository.OpenDatabase(config.Config{SQLitePath: filepath.Join(t.TempDir(), "comparisons.db")})
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +39,7 @@ func TestOverviewComparisonAPIUsesAliasesAndViewerScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	provider := service.NewUsageService(db, emptyPricingCatalogForTest())
-	keys := &keyViewerAnalysisKeyStub{row: key}
+	keys := &analysisKeyStub{row: key}
 	router := NewRouter(nil, nil, provider, nil, AuthConfig{}, nil, "", OptionalProviders{CPAAPIKeys: keys})
 	query := "?range=custom&unit=day&start=" + today.Format(time.DateOnly) + "&end=" + today.Format(time.DateOnly)
 	response := httptest.NewRecorder()
@@ -79,26 +78,5 @@ func TestOverviewComparisonAPIUsesAliasesAndViewerScope(t *testing.T) {
 		if strings.Contains(response.Body.String(), raw) {
 			t.Fatal("raw API key leaked")
 		}
-	}
-	keys.listCalls = 0
-	sessions := auth.NewSessionManager(time.Hour)
-	token, _, err := sessions.CreateAPIKeyViewerWithSource(42, auth.SessionSourceStandard)
-	if err != nil {
-		t.Fatal(err)
-	}
-	authConfig := AuthConfig{Enabled: true, LoginPassword: "secret", SessionTTL: time.Hour}
-	viewerRouter := NewRouter(nil, nil, provider, nil, authConfig, NewAuthHandler(authConfig, sessions), "", OptionalProviders{CPAAPIKeys: keys})
-	response = httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/key-overview/comparisons"+query+"&api_key_id=99", nil)
-	request.AddCookie(&http.Cookie{Name: standardSessionCookieName, Value: token})
-	viewerRouter.ServeHTTP(response, request)
-	if response.Code != http.StatusOK {
-		t.Fatalf("viewer status %d: %s", response.Code, response.Body.String())
-	}
-	if !strings.Contains(response.Body.String(), "api_keys") || strings.Contains(response.Body.String(), "other-model") || strings.Contains(response.Body.String(), key.APIKey) {
-		t.Fatal("viewer received data outside API Key scope")
-	}
-	if !strings.Contains(response.Body.String(), `"key":"42"`) || keys.listCalls != 0 {
-		t.Fatal("viewer should receive its own API Key data without listing keys")
 	}
 }

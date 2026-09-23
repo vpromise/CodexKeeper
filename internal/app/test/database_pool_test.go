@@ -1,6 +1,8 @@
 package test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -54,15 +56,29 @@ func TestNewWithConfigKeepsMemoryDatabaseOnOriginalSinglePool(t *testing.T) {
 func databasePoolTestConfig(databasePath string) config.Config {
 	// App 测试只构造本地资源，不启动 HTTP listener 或任何远端后台任务。
 	return config.Config{
-		AppPort:                "invalid-port",
-		CPABaseURL:             "https://cpa.example.com",
-		CPAManagementKey:       "secret",
-		RedisQueueIdleInterval: time.Second,
-		MetadataSyncInterval:   30 * time.Second,
-		SQLitePath:             databasePath,
-		RequestTimeout:         5 * time.Second,
-		LogLevel:               "info",
-		LogFileEnabled:         false,
-		LogRetentionDays:       7,
+		AppPort:                 "invalid-port",
+		CPABaseURL:              "https://cpa.example.com",
+		CPAManagementKey:        "secret",
+		RedisQueueRetryInterval: time.Second,
+		MetadataSyncInterval:    30 * time.Second,
+		SQLitePath:              databasePath,
+		RequestTimeout:          5 * time.Second,
+		LogLevel:                "info",
+		LogFileEnabled:          false,
+		LogRetentionDays:        7,
+	}
+}
+
+func TestNewWithConfigCreatesWorkDirWithoutFileLogging(t *testing.T) {
+	workDir := filepath.Join(t.TempDir(), "new", "data")
+	cfg := databasePoolTestConfig(filepath.Join(workDir, "app.db"))
+	cfg.WorkDir = workDir
+	application, err := keeperapp.NewWithConfig(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = application.Close() })
+	if _, err := os.Stat(cfg.SQLitePath); err != nil {
+		t.Fatal(err)
 	}
 }

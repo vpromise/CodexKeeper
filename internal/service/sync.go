@@ -9,6 +9,7 @@ import (
 	"cpa-usage-keeper/internal/config"
 	"cpa-usage-keeper/internal/cpa"
 	"cpa-usage-keeper/internal/entities"
+	"cpa-usage-keeper/internal/providers"
 	"cpa-usage-keeper/internal/quota"
 	"cpa-usage-keeper/internal/repository"
 	repositorydto "cpa-usage-keeper/internal/repository/dto"
@@ -233,6 +234,14 @@ func (s *SyncService) processRedisInboxRows(ctx context.Context, writeDB *gorm.D
 			decodeErrs = append(decodeErrs, decodeErr)
 			continue
 		}
+		provider, supported := providers.UsageProvider(event.Provider, event.ExecutorType)
+		if !supported {
+			if err := repository.MarkRedisUsageInboxProcessed(writeDB, row.ID, "", fetchedAt); err != nil {
+				return nil, fmt.Errorf("discard unsupported usage provider: %w", err)
+			}
+			continue
+		}
+		event.Provider = provider
 		validRows = append(validRows, row)
 		events = append(events, event)
 		// nil 也占据当前 event 的索引，防止 ready/unresolved 分区后 snapshot 串行。

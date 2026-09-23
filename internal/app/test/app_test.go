@@ -20,6 +20,7 @@ import (
 	"cpa-usage-keeper/internal/pricing"
 	"cpa-usage-keeper/internal/quota"
 	"cpa-usage-keeper/internal/repository"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -503,18 +504,18 @@ func readAppLogFile(t *testing.T, logDir string) string {
 func testAppConfig(t *testing.T) config.Config {
 	t.Helper()
 	return config.Config{
-		AppPort:                "8080",
-		CPABaseURL:             "https://cpa.example.com",
-		CPAManagementKey:       "secret",
-		RedisQueueIdleInterval: time.Second,
-		MetadataSyncInterval:   30 * time.Second,
-		SQLitePath:             t.TempDir() + "/app.db",
-		BackupEnabled:          true,
-		BackupDir:              t.TempDir() + "/backups",
-		BackupRetentionDays:    7,
-		RequestTimeout:         5 * time.Second,
-		LogLevel:               "info",
-		LogFileEnabled:         false,
-		LogRetentionDays:       7,
+		AppPort:                 "8080",
+		CPABaseURL:              "https://cpa.example.com",
+		CPAManagementKey:        "secret",
+		RedisQueueRetryInterval: time.Second,
+		MetadataSyncInterval:    30 * time.Second,
+		SQLitePath:              t.TempDir() + "/app.db",
+		BackupEnabled:           true,
+		BackupDir:               t.TempDir() + "/backups",
+		BackupRetentionDays:     7,
+		RequestTimeout:          5 * time.Second,
+		LogLevel:                "info",
+		LogFileEnabled:          false,
+		LogRetentionDays:        7,
 	}
 }

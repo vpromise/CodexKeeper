@@ -92,7 +92,7 @@ describe('PriceSettingsCard', () => {
       'qwen-3',
       'claude-sonnet-4.6',
       'deepseek-v3',
-      'gemini-2.5-pro',
+      'codex-2.5-pro',
       'claude-opus-4.5',
       'gpt-5.6',
       'claude-opus-4.6',
@@ -127,7 +127,7 @@ describe('PriceSettingsCard', () => {
       'claude-opus-4.6',
       'claude-opus-4.5',
       'claude-sonnet-4.6',
-      'gemini-2.5-pro',
+      'codex-2.5-pro',
       'deepseek-v3',
       'qwen-3',
     ].map((model) => html.indexOf(`>${model}</span>`));
@@ -377,7 +377,7 @@ describe('buildPricingModelOptions', () => {
   it('keeps unconfigured models first and applies the shared ordering within both groups', () => {
     const options = buildPricingModelOptions(
       ['gpt-5.5', 'gpt-5.6-sol', 'gpt-5.10', 'gpt-5.6-terra', 'gpt-5.9',
-        'qwen-3', 'gemini-2.5-pro', 'claude-opus-4.6', 'deepseek-v3', 'claude-sonnet-4.6'],
+        'qwen-3', 'codex-2.5-pro', 'claude-opus-4.6', 'deepseek-v3', 'claude-sonnet-4.6'],
       {
         'gpt-5.9': { style: 'openai', prompt: 3, completion: 15, cacheRead: 0.3, cacheWrite: 0, multiplier: 1 },
         'gpt-5.5': { style: 'openai', prompt: 2, completion: 8, cacheRead: 0.2, cacheWrite: 0, multiplier: 1 },
@@ -393,7 +393,7 @@ describe('buildPricingModelOptions', () => {
       'gpt-5.6-sol',
       'gpt-5.6-terra',
       'claude-opus-4.6',
-      'gemini-2.5-pro',
+      'codex-2.5-pro',
       'deepseek-v3',
       'qwen-3',
       'gpt-5.9',
@@ -412,7 +412,7 @@ describe('buildPricingModelOptions', () => {
   it.each([
     {
       name: 'case-insensitive family priority with alphabetical remaining families',
-      ordered: ['GPT-5.6', 'Claude-opus-4.6', 'Gemini-2.5-pro', 'Alpha', 'deepseek-v3', 'gptish-1', 'Qwen3'],
+      ordered: ['GPT-5.6', 'Claude-opus-4.6', 'Codex-2.5-pro', 'Alpha', 'deepseek-v3', 'gptish-1', 'Qwen3'],
     },
     {
       name: 'natural versions, base models and natural ascending suffixes',
@@ -432,7 +432,7 @@ describe('buildPricingModelOptions', () => {
     },
     {
       name: 'provider-prefixed models mixed with bare names',
-      ordered: ['openai/gpt-5.10', 'gpt-5.9', 'openai/gpt-4o', 'anthropic/claude-opus-4.6', 'google/gemini-2.5-pro', 'deepseek-v3'],
+      ordered: ['openai/gpt-5.10', 'gpt-5.9', 'openai/gpt-4o', 'anthropic/claude-opus-4.6', 'google/codex-2.5-pro', 'deepseek-v3'],
     },
     {
       name: 'nested and numbered prefixes before version and Claude parsing',

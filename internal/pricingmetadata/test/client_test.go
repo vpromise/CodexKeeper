@@ -60,8 +60,8 @@ func TestPriceSourcesDecodeEquivalentBasePrices(t *testing.T) {
 func TestLiteLLMNormalizesProvidersAndPreservesMissingAndZeroPrices(t *testing.T) {
 	client := pricingmetadata.NewClient(&http.Client{Transport: catalogTransport(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{
-			"gemini/free":{"litellm_provider":"gemini","mode":"chat","input_cost_per_token":0,"output_cost_per_token":0},
-			"bedrock/model-v1:0":{"litellm_provider":"bedrock","mode":"chat","input_cost_per_token":0.000001,"output_cost_per_token":0.000002}
+			"openai/free":{"litellm_provider":"text-completion-openai","mode":"chat","input_cost_per_token":0,"output_cost_per_token":0},
+			"anthropic/claude-v1:0":{"litellm_provider":"anthropic","mode":"chat","input_cost_per_token":0.000001,"output_cost_per_token":0.000002}
 		}`))}, nil
 	})})
 	catalog, err := client.Fetch(context.Background(), "litellm")
@@ -71,11 +71,11 @@ func TestLiteLLMNormalizesProvidersAndPreservesMissingAndZeroPrices(t *testing.T
 	if len(catalog.Entries) != 2 {
 		t.Fatalf("unexpected entries: %+v", catalog.Entries)
 	}
-	if catalog.Entries[0].ProviderID != "amazon-bedrock" || catalog.Entries[0].Model.ID != "bedrock/model-v1:0" {
+	if catalog.Entries[0].ProviderID != "anthropic" || catalog.Entries[0].Model.ID != "anthropic/claude-v1:0" {
 		t.Fatalf("lost provider/version: %+v", catalog.Entries[0])
 	}
 	free := catalog.Entries[1]
-	if free.ProviderID != "google" || free.Model.Cost.Input == nil || *free.Model.Cost.Input != 0 || free.Model.Cost.CacheWrite != nil {
+	if free.ProviderID != "openai" || free.Model.Cost.Input == nil || *free.Model.Cost.Input != 0 || free.Model.Cost.CacheWrite != nil {
 		t.Fatalf("unexpected free/missing values: %+v", free)
 	}
 }

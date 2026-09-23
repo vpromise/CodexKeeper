@@ -2,27 +2,9 @@ package providermetadata
 
 import "fmt"
 
-// providerSources 按用户指定优先级显式构造八个来源，不使用 init 或动态注册。
+// providerSources is the complete native provider metadata surface.
 func providerSources() []source {
-	// 每次返回新 slice，避免调用方或测试意外修改全局 registry 状态。
-	return []source{
-		// Codex 是 registry 第一优先来源。
-		codexSource(),
-		// xAI API Key 是 registry 第二优先来源。
-		xaiSource(),
-		// 普通 Gemini 是 registry 第三优先来源。
-		geminiSource(),
-		// Gemini Interactions 保留独立 provider 类型并排在普通 Gemini 后。
-		geminiInteractionsSource(),
-		// Claude 排在 Gemini 家族后。
-		claudeSource(),
-		// Vertex 使用 CPA 正确拼写并排在 OpenAI 前。
-		vertexSource(),
-		// Meta API Key 使用独立 provider type 并排在 OpenAI 前。
-		metaSource(),
-		// OpenAI Compatibility 最后归并 provider 层与多 key entry。
-		openAICompatibilitySource(),
-	}
+	return []source{codexSource(), claudeSource()}
 }
 
 // validateSources 拒绝空标识和重复 source/type，防止 registry 维护错误改变 stale 范围。

@@ -63,34 +63,6 @@ func TestProviderKeyConfigInfersDisabledFromExcludedModels(t *testing.T) {
 	}
 }
 
-func TestOpenAICompatibilityConfigDecodesProviderAndEntryFields(t *testing.T) {
-	// body 同时使用 legacy id/key 与 snake auth_index，验证旧 CPA 响应仍可归一化。
-	body := `{"id":"OpenRouter","prefix":"openrouter","base-url":"https://openrouter.ai/api/v1","priority":4,"disabled":true,"note":"shared","api-key-entries":[{"key":"first-key","auth_index":"first-auth"},{"api-key":"second-key","auth-index":"second-auth"}]}`
-	var cfg providerconfig.OpenAICompatibilityConfig
-	if err := json.Unmarshal([]byte(body), &cfg); err != nil {
-		t.Fatalf("unmarshal openai compatibility config: %v", err)
-	}
-	if cfg.Name != "OpenRouter" || cfg.Prefix != "openrouter" || cfg.BaseURL != "https://openrouter.ai/api/v1" {
-		t.Fatalf("openai provider fields = %+v", cfg)
-	}
-	if cfg.Priority == nil || *cfg.Priority != 4 || cfg.Disabled == nil || !*cfg.Disabled || cfg.Note == nil || *cfg.Note != "shared" {
-		t.Fatalf("openai sync fields = %+v", cfg)
-	}
-	if len(cfg.APIKeyEntries) != 2 || cfg.APIKeyEntries[0].APIKey != "first-key" || cfg.APIKeyEntries[0].AuthIndex != "first-auth" || cfg.APIKeyEntries[1].APIKey != "second-key" || cfg.APIKeyEntries[1].AuthIndex != "second-auth" {
-		t.Fatalf("openai key entries = %+v", cfg.APIKeyEntries)
-	}
-}
-
-func TestOpenAICompatibilityDoesNotInferDisabledFromExcludedModels(t *testing.T) {
-	var cfg providerconfig.OpenAICompatibilityConfig
-	if err := json.Unmarshal([]byte(`{"name":"OpenRouter","excluded-models":["*"]}`), &cfg); err != nil {
-		t.Fatalf("unmarshal openai compatibility config: %v", err)
-	}
-	if cfg.Disabled != nil {
-		t.Fatalf("openai disabled = %v, want nil", *cfg.Disabled)
-	}
-}
-
 func boolPtr(value bool) *bool {
 	return &value
 }

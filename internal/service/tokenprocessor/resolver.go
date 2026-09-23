@@ -41,18 +41,6 @@ func ResolveIdentity(executorType, identityType string) (HandlerResolution, erro
 		return resolution, nil
 	}
 
-	// exact alias 永远优先，随后只尝试文档允许的 openai-compatible-* prefix matcher。
-	for _, definition := range defaultRegistry.identityPrefixes {
-		if strings.HasPrefix(normalizedIdentity, definition.prefix) {
-			resolution.handlerID = definition.handlerID
-			resolution.evidenceSource = EvidenceIdentity
-			resolution.evidenceStrength = EvidenceIdentityHint
-			resolution.identityType = strings.TrimSpace(identityType)
-			resolution.needsIdentity = false
-			return resolution, nil
-		}
-	}
-
 	// identity 也未知时固定走 strict default，不能根据 provider/model 名称猜测 Token 口径。
 	resolution.handlerID = HandlerStrictPassThrough
 	resolution.evidenceSource = EvidenceDefault

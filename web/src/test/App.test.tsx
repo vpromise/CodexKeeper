@@ -7,7 +7,7 @@ import App from '../App';
 import { useUsageStatsStore } from '../stores/useUsageStatsStore';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-const api = vi.hoisted(() => ({ getSession: vi.fn(), login: vi.fn(), loginWithCPAAPIKey: vi.fn() }));
+const api = vi.hoisted(() => ({ getSession: vi.fn(), login: vi.fn() }));
 vi.mock('../lib/api', async (importOriginal) => ({
   ...await importOriginal<typeof import('../lib/api')>(), ...api,
 }));
@@ -24,18 +24,10 @@ vi.mock('../pages/UsagePage', () => ({
   ),
 }));
 vi.mock('../pages/LoginPage', () => ({
-  LoginPage: ({ onPasswordSubmit, onAPIKeySubmit }: ComponentProps<typeof import('../pages/LoginPage').LoginPage>) => (
-    <><button data-password-login onClick={() => onPasswordSubmit('password')}>Password</button>
-      <button data-key-login onClick={() => onAPIKeySubmit('test-key')}>API Key</button></>
+  LoginPage: ({ onPasswordSubmit }: ComponentProps<typeof import('../pages/LoginPage').LoginPage>) => (
+    <button data-password-login onClick={() => onPasswordSubmit('password')}>Password</button>
   ),
 }));
-vi.mock('../pages/KeyOverviewPage', () => ({
-  KeyOverviewPage: ({ onNavigate }: ComponentProps<typeof import('../pages/KeyOverviewPage').KeyOverviewPage>) => (
-    <button data-navigate onClick={() => onNavigate('/key-ranking')}>Overview</button>
-  ),
-}));
-vi.mock('../pages/KeyAnalysisPage', () => ({ KeyAnalysisPage: () => <div>Analysis</div> }));
-vi.mock('../pages/KeyRankingPage', () => ({ KeyRankingPage: () => <div>Ranking</div> }));
 
 describe('App session and navigation', () => {
   let container: HTMLDivElement;
@@ -66,26 +58,12 @@ describe('App session and navigation', () => {
     expect(container.querySelector('footer')!.dataset.loadVersion).toBe('true');
     await act(async () => container.querySelector<HTMLButtonElement>('[data-expire]')!.click());
     expect(useUsageStatsStore.getState()).toMatchObject({ error: '', realtimeError: '' });
-    expect(container.querySelector('[data-key-login]')).not.toBeNull();
+    expect(container.querySelector('[data-password-login]')).not.toBeNull();
     expect(container.querySelector('footer')!.dataset.loadVersion).toBe('false');
-  });
-
-  it('preserves the embed query through session normalization and viewer navigation', async () => {
-    window.history.replaceState(null, '', '/cpa/auth-files?embed=cpamc');
-    api.getSession.mockResolvedValue({ authenticated: true, role: 'api_key_viewer' });
-    const historyLength = window.history.length;
-    await act(async () => root.render(<App />));
-    expect(window.location.pathname + window.location.search).toBe('/cpa/key-overview?embed=cpamc');
-    expect(container.querySelector('.app-frame')!.getAttribute('data-embed')).toBe('cpamc');
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-navigate]')!.click());
-    expect(container.textContent).toContain('Ranking');
-    expect(window.location.pathname + window.location.search).toBe('/cpa/key-ranking?embed=cpamc');
-    expect(window.history.length).toBe(historyLength);
   });
 
   it.each([
     { role: 'admin', path: '/analysis', button: '[data-password-login]', page: 'Admin' },
-    { role: 'api_key_viewer', path: '/key-analysis', button: '[data-key-login]', page: 'Analysis' },
   ])('preserves the allowed path after $role login', async ({ role, path, button, page }) => {
     window.history.replaceState(null, '', `/cpa${path}?embed=cpamc`);
     api.getSession.mockResolvedValueOnce({ authenticated: false }).mockResolvedValueOnce({ authenticated: true, role });
@@ -93,5 +71,11 @@ describe('App session and navigation', () => {
     await act(async () => container.querySelector<HTMLButtonElement>(button)!.click());
     expect(container.textContent).toContain(page);
     expect(window.location.pathname + window.location.search).toBe(`/cpa${path}?embed=cpamc`);
+  });
+  it('rejects a stale API Key viewer session', async () => {
+    api.getSession.mockResolvedValue({ authenticated: true, role: 'api_key_viewer' });
+    await act(async () => root.render(<App />));
+    expect(container.querySelector('[data-password-login]')).not.toBeNull();
+    expect(container.querySelector('footer')!.dataset.loadVersion).toBe('false');
   });
 });

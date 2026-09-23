@@ -325,14 +325,6 @@ func inspectionQuotaLimitReached(identity entities.UsageIdentity, task *RefreshT
 		return codexInspectionLimitReached(rows)
 	case "claude":
 		return claudeInspectionLimitReached(rows)
-	case "gemini-cli":
-		return geminiCLIInspectionLimitReached(rows)
-	case "antigravity":
-		return antigravityInspectionLimitReached(rows)
-	case "kimi":
-		return kimiInspectionLimitReached(rows)
-	case "xai":
-		return xaiInspectionLimitReached(rows)
 	default:
 		return false
 	}
@@ -348,7 +340,7 @@ func inspectionQuotaProvider(identity entities.UsageIdentity, task *RefreshTaskR
 	for _, value := range []string{taskType, identity.Type} {
 		normalized := strings.ToLower(strings.TrimSpace(value))
 		switch normalized {
-		case "antigravity", "codex", "gemini-cli", "claude", "kimi", "xai":
+		case "codex", "claude":
 			return normalized
 		}
 	}
@@ -369,52 +361,6 @@ func claudeInspectionLimitReached(rows []QuotaRow) bool {
 	// Claude 当前以窗口利用率为主，100% 及以上视为达到限额。
 	for _, row := range rows {
 		if quotaRowUsedPercentAtLeast(row, 100) {
-			return true
-		}
-	}
-	return false
-}
-
-func geminiCLIInspectionLimitReached(rows []QuotaRow) bool {
-	// Gemini CLI 当前常见字段是剩余额度或剩余比例，任一归零都视为达到限额。
-	for _, row := range rows {
-		if quotaRowRemainingFractionAtMost(row, 0) || quotaRowRemainingAtMost(row, 0) {
-			return true
-		}
-	}
-	return false
-}
-
-func antigravityInspectionLimitReached(rows []QuotaRow) bool {
-	// Antigravity 和 Gemini 类似，按剩余比例/剩余额度归零判断。
-	for _, row := range rows {
-		if quotaRowRemainingFractionAtMost(row, 0) || quotaRowRemainingAtMost(row, 0) {
-			return true
-		}
-	}
-	return false
-}
-
-func kimiInspectionLimitReached(rows []QuotaRow) bool {
-	// Kimi 当前可能给 used/limit，也可能给 remaining；两种格式分别判断。
-	for _, row := range rows {
-		if quotaRowUsedAtLimit(row) || quotaRowRemainingAtMost(row, 0) {
-			return true
-		}
-	}
-	return false
-}
-
-func xaiInspectionLimitReached(rows []QuotaRow) bool {
-	// 新 xAI 行的显式 false 代表仍有其它额度（例如 PAYG）；旧缓存没有标志时才回退 used/limit。
-	for _, row := range rows {
-		if row.LimitReached != nil {
-			if *row.LimitReached {
-				return true
-			}
-			continue
-		}
-		if quotaRowUsedAtLimit(row) {
 			return true
 		}
 	}

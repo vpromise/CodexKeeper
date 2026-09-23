@@ -18,26 +18,16 @@ export interface SessionSettingsCardProps {
   onSaveAlias?: (id: string, alias: string) => Promise<void>;
 }
 
-export function getSessionLogoutConfirmationKeys(session: AuthManagedSessionItem) {
-  if (session.kind === 'admin') {
-    return {
-      titleKey: 'usage_stats.session_settings_admin_logout_title',
-      bodyKey: 'usage_stats.session_settings_admin_logout_body',
-      confirmKey: 'usage_stats.session_settings_logout_confirm',
-    };
-  }
+export function getSessionLogoutConfirmationKeys() {
   return {
-    titleKey: 'usage_stats.session_settings_api_key_logout_title',
-    bodyKey: 'usage_stats.session_settings_api_key_logout_body',
+    titleKey: 'usage_stats.session_settings_admin_logout_title',
+    bodyKey: 'usage_stats.session_settings_admin_logout_body',
     confirmKey: 'usage_stats.session_settings_logout_confirm',
   };
 }
 
 function getSessionDisplayName(session: AuthManagedSessionItem, t: (key: string) => string) {
-  if (session.kind === 'admin') {
-    return session.alias || t('usage_stats.session_settings_admin_label');
-  }
-  return session.label || session.displayKey || t('usage_stats.session_settings_unknown_api_key');
+  return session.alias || t('usage_stats.session_settings_admin_label');
 }
 
 function getSessionClientLabel(session: AuthManagedSessionItem, t: (key: string) => string) {
@@ -171,7 +161,7 @@ export function SessionSettingsCard({ sessions, loading = false, revokingId = nu
   const [confirmingSession, setConfirmingSession] = useState<AuthManagedSessionItem | null>(null);
   const sessionSettingsBodyRef = useRef<HTMLDivElement | null>(null);
   useScrollBoundaryContainment(sessionSettingsBodyRef);
-  const confirmationKeys = confirmingSession ? getSessionLogoutConfirmationKeys(confirmingSession) : null;
+  const confirmationKeys = confirmingSession ? getSessionLogoutConfirmationKeys() : null;
   const confirmingLabel = confirmingSession ? getSessionDisplayName(confirmingSession, t) : '';
   const confirmingRevoking = confirmingSession ? revokingId === confirmingSession.id : false;
 
@@ -197,7 +187,6 @@ export function SessionSettingsCard({ sessions, loading = false, revokingId = nu
         ) : (
           <div className={styles.sessionSettingsList}>
             {sessions.map((session) => {
-              const isAdmin = session.kind === 'admin';
               const displayName = getSessionDisplayName(session, t);
               const clientLabel = getSessionClientLabel(session, t);
               const sourceLabel = session.source === 'embed'
@@ -237,7 +226,7 @@ export function SessionSettingsCard({ sessions, loading = false, revokingId = nu
                   <div className={styles.sessionSettingsSummary}>
                     <div className={styles.sessionSettingsBadges}>
                       <span className={styles.sessionSettingsType}>
-                        {isAdmin ? t('usage_stats.session_settings_type_admin') : t('usage_stats.session_settings_type_api_key')}
+                        {t('usage_stats.session_settings_type_admin')}
                       </span>
                       <span
                         className={`${styles.sessionSettingsSource} ${session.source === 'embed' ? styles.sessionSettingsSourceEmbed : styles.sessionSettingsSourceStandard}`}
@@ -247,7 +236,7 @@ export function SessionSettingsCard({ sessions, loading = false, revokingId = nu
                       </span>
                     </div>
                     <div className={styles.sessionSettingsNameRow}>
-                      {isAdmin && onSaveAlias ? (
+                      {onSaveAlias ? (
                         <AdminSessionAliasEditor
                           session={session}
                           displayName={displayName}

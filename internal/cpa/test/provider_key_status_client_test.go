@@ -20,11 +20,7 @@ func TestFetchProviderKeyConfigUsesDedicatedEndpointPerProviderType(t *testing.T
 		payloadKey   string
 	}{
 		{providerType: "codex", path: "/v0/management/codex-api-key", payloadKey: "codex-api-key"},
-		{providerType: "xai", path: "/v0/management/xai-api-key", payloadKey: "xai-api-key"},
-		{providerType: "gemini", path: "/v0/management/gemini-api-key", payloadKey: "gemini-api-key"},
-		{providerType: "gemini-interactions", path: "/v0/management/interactions-api-key", payloadKey: "interactions-api-key"},
 		{providerType: "claude", path: "/v0/management/claude-api-key", payloadKey: "claude-api-key"},
-		{providerType: "vertex", path: "/v0/management/vertex-api-key", payloadKey: "vertex-api-key"},
 	}
 
 	for _, tc := range cases {
@@ -75,7 +71,7 @@ func TestFetchProviderKeyConfigRejectsUnsupportedProviderType(t *testing.T) {
 	if cpa.ProviderKeyStatusSupported("openai") {
 		t.Fatal("expected openai compatibility to be unsupported for status toggles")
 	}
-	for _, providerType := range []string{"codex", "xai", "gemini", "gemini-interactions", "claude", "vertex"} {
+	for _, providerType := range []string{"codex", "claude"} {
 		if !cpa.ProviderKeyStatusSupported(providerType) {
 			t.Fatalf("expected %s to support status toggles", providerType)
 		}
@@ -88,7 +84,7 @@ func TestUpdateProviderKeyExcludedModelsPatchesIndexAndValue(t *testing.T) {
 		if r.Method != http.MethodPatch {
 			t.Fatalf("method = %q, want PATCH", r.Method)
 		}
-		if r.URL.Path != "/v0/management/gemini-api-key" {
+		if r.URL.Path != "/v0/management/codex-api-key" {
 			t.Fatalf("path = %q", r.URL.Path)
 		}
 		if got := r.Header.Get("Content-Type"); got != "application/json" {
@@ -121,7 +117,7 @@ func TestUpdateProviderKeyExcludedModelsPatchesIndexAndValue(t *testing.T) {
 	defer server.Close()
 
 	client := cpa.NewClient(server.URL, "management-secret", 2*time.Second, false)
-	statusCode, err := client.UpdateProviderKeyExcludedModels(context.Background(), "gemini", 3, []string{"gpt-5", cpa.ProviderKeyDisabledExcludedModel})
+	statusCode, err := client.UpdateProviderKeyExcludedModels(context.Background(), "codex", 3, []string{"gpt-5", cpa.ProviderKeyDisabledExcludedModel})
 	if err != nil {
 		t.Fatalf("UpdateProviderKeyExcludedModels returned error: %v", err)
 	}
@@ -174,7 +170,7 @@ func TestUpdateProviderKeyExcludedModelsSendsNoDisambiguationQuery(t *testing.T)
 	defer server.Close()
 
 	client := cpa.NewClient(server.URL, "management-secret", 2*time.Second, false)
-	if _, err := client.UpdateProviderKeyExcludedModels(context.Background(), "gemini", 1, []string{"*"}); err != nil {
+	if _, err := client.UpdateProviderKeyExcludedModels(context.Background(), "codex", 1, []string{"*"}); err != nil {
 		t.Fatalf("UpdateProviderKeyExcludedModels returned error: %v", err)
 	}
 }
@@ -205,7 +201,7 @@ func TestUpdateProviderKeyExcludedModelsReturnsUpstreamStatusCode(t *testing.T) 
 		wantStatus := wantStatus
 		t.Run(http.StatusText(wantStatus), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/v0/management/gemini-api-key" {
+				if r.URL.Path != "/v0/management/codex-api-key" {
 					t.Fatalf("path = %q", r.URL.Path)
 				}
 				w.WriteHeader(wantStatus)
@@ -214,7 +210,7 @@ func TestUpdateProviderKeyExcludedModelsReturnsUpstreamStatusCode(t *testing.T) 
 			defer server.Close()
 
 			client := cpa.NewClient(server.URL, "management-secret", 2*time.Second, false)
-			statusCode, err := client.UpdateProviderKeyExcludedModels(context.Background(), "gemini", 2, []string{"*"})
+			statusCode, err := client.UpdateProviderKeyExcludedModels(context.Background(), "codex", 2, []string{"*"})
 			if err == nil {
 				t.Fatalf("expected error for status %d", wantStatus)
 			}

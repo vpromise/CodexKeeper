@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiPath, createUsageEventRequestLogDownloadURL, getSession, login, loginWithCPAAPIKey, logout } from '../api';
+import { apiPath, createUsageEventRequestLogDownloadURL, getSession, login, logout } from '../api';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -71,23 +71,6 @@ describe('apiPath CPAMC embed behavior', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(headerValue(fetchMock.mock.calls[1][1], 'X-CPA-Usage-Keeper-Embed-Session')).toBeNull();
     expect(headerValue(fetchMock.mock.calls[2][1], 'X-CPA-Usage-Keeper-Embed-Session')).toBe('embed-token');
-  });
-
-  it('stores and sends the embed session token after API key login when the embed cookie cannot authenticate', async () => {
-    const sessionStorage = createSessionStorage();
-    vi.stubGlobal('window', { __APP_BASE_PATH__: '/keeper/', location: { search: '?embed=cpamc' }, sessionStorage });
-    const fetchMock = vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(Response.json({ session_token: 'api-key-embed-token' }))
-      .mockResolvedValueOnce(Response.json({ authenticated: false }))
-      .mockResolvedValueOnce(Response.json({ authenticated: true, role: 'admin' }));
-
-    await loginWithCPAAPIKey('cpa-key');
-    await getSession();
-
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost').pathname).toBe('/keeper/api/v1/auth/api-key-login');
-    expect(headerValue(fetchMock.mock.calls[1][1], 'X-CPA-Usage-Keeper-Embed-Session')).toBeNull();
-    expect(headerValue(fetchMock.mock.calls[2][1], 'X-CPA-Usage-Keeper-Embed-Session')).toBe('api-key-embed-token');
   });
 
   it('uses embed headers when creating request log download URLs', async () => {

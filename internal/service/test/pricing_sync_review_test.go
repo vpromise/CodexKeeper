@@ -90,34 +90,6 @@ func TestPricingSyncDoesNotFallbackAcrossFineTuningIdentity(t *testing.T) {
 	}
 }
 
-func TestPricingSyncPrefersLiteLLMOfficialProviderAliases(t *testing.T) {
-	for _, tc := range []struct {
-		provider, model, officialID string
-		input, output               float64
-	}{
-		{"moonshot", "kimi-k2.5", "moonshotai", 0.6, 3},
-		{"dashscope", "qwen-plus", "alibaba-cn", 0.4, 1.2},
-		{"qwencloud", "qwen-plus", "alibaba", 0.4, 1.2},
-		{"qwen_ai_platform", "qwen-plus", "alibaba-cn", 0.4, 1.2},
-	} {
-		t.Run(tc.provider, func(t *testing.T) {
-			catalog := fmt.Sprintf(`{
-				%q:{"litellm_provider":%q,"mode":"chat","input_cost_per_token":%g,"output_cost_per_token":%g},
-				%q:{"litellm_provider":"openrouter","mode":"chat","input_cost_per_token":0.00000026,"output_cost_per_token":0.00000078}
-			}`, tc.provider+"/"+tc.model, tc.provider, tc.input/1e6, tc.output/1e6, "openrouter/"+tc.model)
-			preview := previewReviewCatalog(t, "litellm", catalog, tc.model, "custom/"+tc.model)
-			if len(preview.Matches) != 2 {
-				t.Fatalf("unexpected preview: %+v", preview)
-			}
-			for _, match := range preview.Matches {
-				if match.SourceProviderID != tc.officialID || math.Abs(match.PromptPricePer1M-tc.input) > 1e-10 || math.Abs(match.CompletionPricePer1M-tc.output) > 1e-10 {
-					t.Errorf("expected official %s pricing: %+v", tc.provider, match)
-				}
-			}
-		})
-	}
-}
-
 func TestPricingSyncPrefersOpenAITextCompletionPrices(t *testing.T) {
 	for _, tc := range []struct{ name, input, provider, matchedModel string }{
 		{"official", "0.0000015", "openai", "gpt-3.5-turbo-instruct"},

@@ -14,6 +14,7 @@ import (
 	"cpa-usage-keeper/internal/auth"
 	"cpa-usage-keeper/internal/poller"
 	"cpa-usage-keeper/internal/version"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -198,7 +199,7 @@ func TestVersionReturnsCurrentVersionAndUpdateCheckFlag(t *testing.T) {
 	}
 }
 
-func TestVersionAuthorizesAdminAndViewerSessionsAtConfiguredBasePath(t *testing.T) {
+func TestVersionAuthorizesOnlyAdminAtConfiguredBasePath(t *testing.T) {
 	for _, basePath := range []string{"", "/cpa"} {
 		t.Run("base="+basePath, func(t *testing.T) {
 			sessions := auth.NewSessionManager(time.Hour)
@@ -219,7 +220,7 @@ func TestVersionAuthorizesAdminAndViewerSessionsAtConfiguredBasePath(t *testing.
 			}{
 				{"unauthenticated", "", http.StatusUnauthorized},
 				{"admin", adminToken, http.StatusOK},
-				{"viewer", viewerToken, http.StatusOK},
+				{"legacy viewer", viewerToken, http.StatusUnauthorized},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					req := httptest.NewRequest(http.MethodGet, basePath+"/api/v1/version", nil)

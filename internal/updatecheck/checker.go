@@ -15,8 +15,8 @@ import (
 
 const (
 	defaultGitHubAPIBaseURL = "https://api.github.com"
-	defaultGitHubOwner      = "Willxup"
-	defaultGitHubRepo       = "cpa-usage-keeper"
+	defaultGitHubOwner      = "vpromise"
+	defaultGitHubRepo       = "CodexKeeper"
 	defaultRequestTimeout   = 10 * time.Second
 )
 

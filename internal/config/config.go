@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"cpa-usage-keeper/internal/cpa"
+
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -57,16 +59,14 @@ type Config struct {
 	CPAManagementKey string
 	// CPARequestLogAccessEnabled 控制是否允许通过 Keeper 访问 CPA request log。
 	CPARequestLogAccessEnabled bool
-	// APIKeyViewerLocalRankingEnabled 控制 API Key Viewer 是否可只读查看本地排行。
-	APIKeyViewerLocalRankingEnabled bool
 	// RedisQueueAddr 是 CPA management data stream 的 TCP 地址，空值时按 CPA_BASE_URL 推导。
 	RedisQueueAddr string
 	// RedisQueueTLS 控制是否使用 TLS 连接 Redis 队列。
 	RedisQueueTLS bool
 	// RedisQueueBatchSize 是单次 Redis LPOP 最多拉取的消息数。
 	RedisQueueBatchSize int
-	// RedisQueueIdleInterval 是 Redis 队列为空时的下一次检查间隔。
-	RedisQueueIdleInterval time.Duration
+	// RedisQueueRetryInterval sets the initial ingestion retry delay.
+	RedisQueueRetryInterval time.Duration
 	// MetadataSyncInterval 是 auth files 和 provider metadata 的固定刷新间隔。
 	MetadataSyncInterval time.Duration
 	// QuotaRefreshWorkerLimit 是 Auth Files 限额刷新队列的最大并发数。
@@ -101,6 +101,8 @@ type Config struct {
 	AuthEnabled bool
 	// LoginPassword 是启用登录保护时使用的登录密码。
 	LoginPassword string
+	// LoginPasswordHash accepts a bcrypt hash instead of a plaintext login password.
+	LoginPasswordHash string
 	// AuthSessionTTL 是登录 session 有效时长。
 	AuthSessionTTL time.Duration
 }
@@ -146,12 +148,12 @@ func Load(options LoadOptions) (*Config, error) {
 		return nil, fmt.Errorf("REDIS_QUEUE_BATCH_SIZE must be <= %d", cpa.ManagementUsageQueueMaxBatchSize)
 	}
 
-	redisQueueIdleInterval, err := getDuration("REDIS_QUEUE_IDLE_INTERVAL", time.Second)
+	redisQueueRetryInterval, err := getDuration("REDIS_QUEUE_RETRY_INTERVAL", time.Second)
 	if err != nil {
 		return nil, err
 	}
-	if redisQueueIdleInterval <= 0 {
-		return nil, fmt.Errorf("REDIS_QUEUE_IDLE_INTERVAL must be positive")
+	if redisQueueRetryInterval <= 0 {
+		return nil, fmt.Errorf("REDIS_QUEUE_RETRY_INTERVAL must be positive")
 	}
 
 	quotaRefreshWorkerLimit, err := getInt("QUOTA_REFRESH_WORKER_LIMIT", QuotaRefreshWorkerLimitDefault)
@@ -241,10 +243,6 @@ func Load(options LoadOptions) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	apiKeyViewerLocalRankingEnabled, err := getBool("API_KEY_VIEWER_LOCAL_RANKING_ENABLED", false)
-	if err != nil {
-		return nil, err
-	}
 
 	appBasePath, err := normalizeBasePath(strings.TrimSpace(os.Getenv("APP_BASE_PATH")))
 	if err != nil {
@@ -254,40 +252,40 @@ func Load(options LoadOptions) (*Config, error) {
 	workDir := getString("WORK_DIR", DefaultWorkDir)
 
 	cfg := &Config{
-		AppHost:                         strings.TrimSpace(os.Getenv("APP_HOST")),
-		AppPort:                         getString("APP_PORT", "8080"),
-		AppBasePath:                     appBasePath,
-		CPAPublicURL:                    strings.TrimSpace(os.Getenv("CPA_PUBLIC_URL")),
-		TrustedProxyCIDRs:               trustedProxyCIDRs,
-		TLSEnabled:                      tlsEnabled,
-		TLSCertFile:                     strings.TrimSpace(os.Getenv("TLS_CERT_FILE")),
-		TLSKeyFile:                      strings.TrimSpace(os.Getenv("TLS_KEY_FILE")),
-		CPABaseURL:                      strings.TrimSpace(os.Getenv("CPA_BASE_URL")),
-		CPAManagementKey:                strings.TrimSpace(os.Getenv("CPA_MANAGEMENT_KEY")),
-		CPARequestLogAccessEnabled:      cpaRequestLogAccessEnabled,
-		APIKeyViewerLocalRankingEnabled: apiKeyViewerLocalRankingEnabled,
-		RedisQueueAddr:                  strings.TrimSpace(os.Getenv("REDIS_QUEUE_ADDR")),
-		RedisQueueTLS:                   redisQueueTLS,
-		RedisQueueBatchSize:             redisQueueBatchSize,
-		RedisQueueIdleInterval:          redisQueueIdleInterval,
-		MetadataSyncInterval:            MetadataSyncIntervalDefault,
-		QuotaRefreshWorkerLimit:         quotaRefreshWorkerLimit,
-		QuotaUpstreamResponsesEnabled:   quotaUpstreamResponsesEnabled,
-		WorkDir:                         workDir,
-		SQLitePath:                      filepath.Join(workDir, workDirDatabaseName),
-		BackupEnabled:                   backupEnabled,
-		BackupDir:                       filepath.Join(workDir, workDirBackupsName),
-		BackupInterval:                  backupInterval,
-		BackupRetentionDays:             backupRetentionDays,
-		RequestTimeout:                  requestTimeout,
-		TLSSkipVerify:                   tlsSkipVerify,
-		LogLevel:                        getString("LOG_LEVEL", "info"),
-		LogFileEnabled:                  logFileEnabled,
-		LogDir:                          filepath.Join(workDir, workDirLogsName),
-		LogRetentionDays:                logRetentionDays,
-		AuthEnabled:                     authEnabled,
-		LoginPassword:                   strings.TrimSpace(os.Getenv("LOGIN_PASSWORD")),
-		AuthSessionTTL:                  authSessionTTL,
+		AppHost:                       strings.TrimSpace(os.Getenv("APP_HOST")),
+		AppPort:                       getString("APP_PORT", "8080"),
+		AppBasePath:                   appBasePath,
+		CPAPublicURL:                  strings.TrimSpace(os.Getenv("CPA_PUBLIC_URL")),
+		TrustedProxyCIDRs:             trustedProxyCIDRs,
+		TLSEnabled:                    tlsEnabled,
+		TLSCertFile:                   strings.TrimSpace(os.Getenv("TLS_CERT_FILE")),
+		TLSKeyFile:                    strings.TrimSpace(os.Getenv("TLS_KEY_FILE")),
+		CPABaseURL:                    strings.TrimSpace(os.Getenv("CPA_BASE_URL")),
+		CPAManagementKey:              strings.TrimSpace(os.Getenv("CPA_MANAGEMENT_KEY")),
+		CPARequestLogAccessEnabled:    cpaRequestLogAccessEnabled,
+		RedisQueueAddr:                strings.TrimSpace(os.Getenv("REDIS_QUEUE_ADDR")),
+		RedisQueueTLS:                 redisQueueTLS,
+		RedisQueueBatchSize:           redisQueueBatchSize,
+		RedisQueueRetryInterval:       redisQueueRetryInterval,
+		MetadataSyncInterval:          MetadataSyncIntervalDefault,
+		QuotaRefreshWorkerLimit:       quotaRefreshWorkerLimit,
+		QuotaUpstreamResponsesEnabled: quotaUpstreamResponsesEnabled,
+		WorkDir:                       workDir,
+		SQLitePath:                    filepath.Join(workDir, workDirDatabaseName),
+		BackupEnabled:                 backupEnabled,
+		BackupDir:                     filepath.Join(workDir, workDirBackupsName),
+		BackupInterval:                backupInterval,
+		BackupRetentionDays:           backupRetentionDays,
+		RequestTimeout:                requestTimeout,
+		TLSSkipVerify:                 tlsSkipVerify,
+		LogLevel:                      getString("LOG_LEVEL", "info"),
+		LogFileEnabled:                logFileEnabled,
+		LogDir:                        filepath.Join(workDir, workDirLogsName),
+		LogRetentionDays:              logRetentionDays,
+		AuthEnabled:                   authEnabled,
+		LoginPassword:                 strings.TrimSpace(os.Getenv("LOGIN_PASSWORD")),
+		LoginPasswordHash:             strings.TrimSpace(os.Getenv("LOGIN_PASSWORD_HASH")),
+		AuthSessionTTL:                authSessionTTL,
 	}
 	if appHost := strings.TrimSpace(options.AppHost); appHost != "" {
 		cfg.AppHost = appHost
@@ -299,11 +297,19 @@ func Load(options LoadOptions) (*Config, error) {
 		return nil, fmt.Errorf("CPA_MANAGEMENT_KEY is required")
 	}
 	if cfg.AuthEnabled {
-		if cfg.LoginPassword == "" && authEnabledValue == "" {
-			return nil, fmt.Errorf("AUTH_ENABLED is not set, so authentication defaults to true; LOGIN_PASSWORD is required")
+		if cfg.LoginPassword != "" && cfg.LoginPasswordHash != "" {
+			return nil, fmt.Errorf("set only one of LOGIN_PASSWORD or LOGIN_PASSWORD_HASH")
 		}
-		if cfg.LoginPassword == "" {
-			return nil, fmt.Errorf("LOGIN_PASSWORD is required when AUTH_ENABLED is true")
+		if cfg.LoginPassword == "" && cfg.LoginPasswordHash == "" {
+			if authEnabledValue == "" {
+				return nil, fmt.Errorf("AUTH_ENABLED is not set, so authentication defaults to true; LOGIN_PASSWORD is required unless LOGIN_PASSWORD_HASH is set")
+			}
+			return nil, fmt.Errorf("LOGIN_PASSWORD or LOGIN_PASSWORD_HASH is required when AUTH_ENABLED is true")
+		}
+		if cfg.LoginPasswordHash != "" {
+			if _, err := bcrypt.Cost([]byte(cfg.LoginPasswordHash)); err != nil || len(cfg.LoginPasswordHash) != 60 {
+				return nil, fmt.Errorf("LOGIN_PASSWORD_HASH must be a valid bcrypt hash")
+			}
 		}
 		if cfg.LoginPassword == publicLoginPasswordPlaceholder {
 			return nil, fmt.Errorf("LOGIN_PASSWORD must not use the public example value %q", publicLoginPasswordPlaceholder)

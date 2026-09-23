@@ -14,21 +14,9 @@ func TestResolveExecutorUsesCPAParserContracts(t *testing.T) {
 		handlerID tokenprocessor.HandlerID
 	}{
 		{name: "claude", executor: "ClaudeExecutor", handlerID: tokenprocessor.HandlerClaude},
-		{name: "gemini", executor: "GeminiExecutor", handlerID: tokenprocessor.HandlerGemini},
-		{name: "gemini vertex", executor: "GeminiVertexExecutor", handlerID: tokenprocessor.HandlerGemini},
-		{name: "gemini cli historical", executor: "GeminiCLIExecutor", handlerID: tokenprocessor.HandlerGemini},
-		{name: "ai studio", executor: "AIStudioExecutor", handlerID: tokenprocessor.HandlerGemini},
-		{name: "antigravity", executor: "AntigravityExecutor", handlerID: tokenprocessor.HandlerGemini},
 		{name: "codex", executor: "CodexExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
 		{name: "codex websocket", executor: "CodexWebsocketsExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
 		{name: "codex auto", executor: "CodexAutoExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{name: "xai", executor: "XAIExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{name: "xai websocket", executor: "XAIWebsocketsExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{name: "xai auto", executor: "XAIAutoExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{name: "kimi", executor: "KimiExecutor", handlerID: tokenprocessor.HandlerStrictPassThrough},
-		{name: "openai compatibility", executor: "OpenAICompatExecutor", handlerID: tokenprocessor.HandlerOpenAICompatibility},
-		{name: "meta responses", executor: "MetaExecutor", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{name: "devin interactions strict", executor: "DevinExecutor", handlerID: tokenprocessor.HandlerStrictPassThrough},
 	}
 
 	for _, test := range tests {
@@ -55,26 +43,7 @@ func TestResolveIdentityUsesExistingFallbackAliases(t *testing.T) {
 		handlerID tokenprocessor.HandlerID
 	}{
 		{identity: "claude", handlerID: tokenprocessor.HandlerClaude},
-		{identity: "anthropic", handlerID: tokenprocessor.HandlerClaude},
-		{identity: "gemini", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "vertex", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "gemini-cli", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "gemini-cli-code-assist", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "gemini-interactions", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "aistudio", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "ai-studio", handlerID: tokenprocessor.HandlerGemini},
-		{identity: "antigravity", handlerID: tokenprocessor.HandlerGemini},
 		{identity: "codex", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{identity: "xai", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{identity: "meta", handlerID: tokenprocessor.HandlerResponsesInclusive},
-		{identity: "devin", handlerID: tokenprocessor.HandlerStrictPassThrough},
-		{identity: "kimi", handlerID: tokenprocessor.HandlerStrictPassThrough},
-		{identity: "moonshot", handlerID: tokenprocessor.HandlerStrictPassThrough},
-		{identity: "openai", handlerID: tokenprocessor.HandlerOpenAICompatibility},
-		{identity: "openai-compatible", handlerID: tokenprocessor.HandlerOpenAICompatibility},
-		{identity: "openai_compatibility", handlerID: tokenprocessor.HandlerOpenAICompatibility},
-		{identity: "openai-compatibility", handlerID: tokenprocessor.HandlerOpenAICompatibility},
-		{identity: "openai-compatible-acme", handlerID: tokenprocessor.HandlerOpenAICompatibility},
 	}
 
 	for _, test := range tests {
@@ -88,17 +57,6 @@ func TestResolveIdentityUsesExistingFallbackAliases(t *testing.T) {
 				t.Fatalf("expected identity %q to remain a hint, got source=%q strength=%q", test.identity, resolution.EvidenceSource(), resolution.EvidenceStrength())
 			}
 		})
-	}
-}
-
-func TestResolveIdentityKeepsExecutorPriorityForKimiClaudeDelegation(t *testing.T) {
-	// CPA 的 Kimi Claude 入站会由 ClaudeExecutor 上报；executor 与 identity 不同是合法委托，不是冲突。
-	resolution := mustResolveIdentity(t, "ClaudeExecutor", "kimi")
-	if resolution.HandlerID() != tokenprocessor.HandlerClaude {
-		t.Fatalf("expected ClaudeExecutor to win over Kimi identity, got %q", resolution.HandlerID())
-	}
-	if resolution.EvidenceSource() != tokenprocessor.EvidenceExecutor || resolution.EvidenceStrength() != tokenprocessor.EvidenceParserContract {
-		t.Fatalf("expected delegated event to keep executor contract, got source=%q strength=%q", resolution.EvidenceSource(), resolution.EvidenceStrength())
 	}
 }
 

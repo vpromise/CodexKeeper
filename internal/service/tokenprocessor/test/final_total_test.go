@@ -18,7 +18,6 @@ func TestKnownExecutorContractsCorrectWrongNonzeroTotal(t *testing.T) {
 		expectedTotal  int64
 	}{
 		{name: "claude", executor: "ClaudeExecutor", tokens: tokenprocessor.TokenValues{InputTokens: 100, OutputTokens: 20, CacheReadTokens: 10, CacheCreationTokens: 5, TotalTokens: 120}, expectedInput: 115, expectedOutput: 20, expectedTotal: 135},
-		{name: "gemini", executor: "GeminiExecutor", tokens: tokenprocessor.TokenValues{InputTokens: 11, OutputTokens: 7, ReasoningTokens: 3, TotalTokens: 999}, expectedInput: 11, expectedOutput: 10, expectedTotal: 21},
 		{name: "responses", executor: "CodexExecutor", tokens: tokenprocessor.TokenValues{InputTokens: 100, OutputTokens: 20, ReasoningTokens: 5, CacheReadTokens: 30, CacheCreationTokens: 10, TotalTokens: 125}, expectedInput: 100, expectedOutput: 20, expectedTotal: 120},
 	}
 

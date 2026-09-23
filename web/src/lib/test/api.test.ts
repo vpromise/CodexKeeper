@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, appPath, isUsageRangeBoundsConflict, createUsageEventRequestLogDownloadURL, deleteAuthFiles, exportUsageEvents, fetchAnalysis, fetchAnalysisLatency, fetchAuthSessions, fetchCodexQuotaHistory, fetchCpaApiKeyOptions, fetchCpaApiKeys, fetchCpaApiKeySettings, fetchKeyActivity, fetchKeyAnalysis, fetchKeyAnalysisLatency, fetchKeyOverview, fetchKeyOverviewRealtime, fetchQuotaAutoRefreshSettings, fetchUsageActivity, fetchUsageOverview, fetchUsageOverviewRealtime, fetchUsageQuotaCache, fetchUsageQuotaInspectionStatus, fetchUsageQuotaResetCredits, fetchUpdateCheck, fetchUsageEventModelFilterOptions, fetchUsageEventRequestLog, fetchUsageEventSourceFilterOptions, fetchUsageEvents, fetchUsageIdentities, fetchUsageIdentitiesPage, fetchUsageQuotaRefreshTask, fetchVersion, loginWithCPAAPIKey, logout, refreshUsageQuotas, resetUsageQuota, revokeAuthSession, setAuthFilesDisabled, setCredentialDisabled, startUsageQuotaInspection, updateAuthSessionAlias, updateCpaApiKeyAlias, updateQuotaAutoRefreshSettings } from '../api';
+import { ApiError, appPath, isUsageRangeBoundsConflict, createUsageEventRequestLogDownloadURL, deleteAuthFiles, exportUsageEvents, fetchAnalysis, fetchAnalysisLatency, fetchAuthSessions, fetchCodexQuotaHistory, fetchCpaApiKeyOptions, fetchCpaApiKeys, fetchCpaApiKeySettings, fetchQuotaAutoRefreshSettings, fetchUsageActivity, fetchUsageOverview, fetchUsageOverviewRealtime, fetchUsageQuotaCache, fetchUsageQuotaInspectionStatus, fetchUsageQuotaResetCredits, fetchUpdateCheck, fetchUsageEventModelFilterOptions, fetchUsageEventRequestLog, fetchUsageEventSourceFilterOptions, fetchUsageEvents, fetchUsageIdentities, fetchUsageIdentitiesPage, fetchUsageQuotaRefreshTask, fetchVersion, logout, refreshUsageQuotas, resetUsageQuota, revokeAuthSession, setAuthFilesDisabled, setCredentialDisabled, startUsageQuotaInspection, updateAuthSessionAlias, updateCpaApiKeyAlias, updateQuotaAutoRefreshSettings } from '../api';
 
 const headerValue = (init: RequestInit | undefined, name: string): string | null => new Headers(init?.headers).get(name);
 
@@ -20,8 +20,8 @@ describe('fetchUsageEvents', () => {
   it('builds app paths from the configured base path', () => {
     vi.stubGlobal('window', { __APP_BASE_PATH__: '/keeper/' });
 
-    expect(appPath('/key-overview')).toBe('/keeper/key-overview');
-    expect(appPath('key-overview')).toBe('/keeper/key-overview');
+    expect(appPath('/overview')).toBe('/keeper/overview');
+    expect(appPath('overview')).toBe('/keeper/overview');
   });
 
   it('identifies only HTTP 409 as a usage range bounds conflict', () => {
@@ -30,67 +30,14 @@ describe('fetchUsageEvents', () => {
     expect(isUsageRangeBoundsConflict(new Error('network error'))).toBe(false);
   });
 
-  it('posts CPA API key logins to the dedicated auth endpoint', async () => {
-    const fetchMock = mockJSON({});
-
-    await loginWithCPAAPIKey('sk-cpa-viewer');
-
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(new URL(String(url), 'http://localhost').pathname).toBe('/api/v1/auth/api-key-login');
-    expect(init).toMatchObject({ credentials: 'include', method: 'POST' });
-    expect(headerValue(init, 'Content-Type')).toBe('application/json');
-    expect(init?.body).toBe(JSON.stringify({ apiKey: 'sk-cpa-viewer' }));
-  });
-
-  it('loads key overview with only the viewer range query', async () => {
-    const fetchMock = mockJSON({ usage: { total_requests: 0, success_count: 0, failure_count: 0, total_tokens: 0 } });
-    const signal = new AbortController().signal;
-
-    await fetchKeyOverview({ range: '8h' }, signal);
-
-    const [url, init] = fetchMock.mock.calls[0];
-    const parsed = new URL(String(url), 'http://localhost');
-    expect(parsed.pathname).toBe('/api/v1/key-overview');
-    expect(parsed.searchParams.get('range')).toBe('8h');
-    expect(parsed.searchParams.get('api_key_id')).toBeNull();
-    expect(parsed.searchParams.get('start')).toBeNull();
-    expect(parsed.searchParams.get('end')).toBeNull();
-    expect(init).toMatchObject({ credentials: 'include', signal });
-  });
-
-  it('loads key analysis sections without accepting a client API key scope', async () => {
-    vi.stubGlobal('window', { __APP_BASE_PATH__: '/keeper' });
-    const fetchMock = mockJSON({});
-    const signal = new AbortController().signal;
-    const request = { range: 'custom' as const, unit: 'day' as const, start: '2026-08-01', end: '2026-08-07' };
-
-    await fetchKeyAnalysis(request, signal);
-    await fetchKeyAnalysisLatency(request, signal);
-
-    expect(fetchMock.mock.calls).toHaveLength(2);
-    const [analysisURL, latencyURL] = fetchMock.mock.calls.map(([rawURL]) => new URL(String(rawURL), 'http://localhost'));
-    expect(analysisURL.pathname).toBe('/keeper/api/v1/key-analysis');
-    expect(latencyURL.pathname).toBe('/keeper/api/v1/key-analysis/latency');
-    for (const url of [analysisURL, latencyURL]) {
-      expect(url.searchParams.get('range')).toBe('custom');
-      expect(url.searchParams.get('unit')).toBe('day');
-      expect(url.searchParams.get('start')).toBe('2026-08-01');
-      expect(url.searchParams.get('end')).toBe('2026-08-07');
-      expect(url.searchParams.get('api_key_id')).toBeNull();
-    }
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include', signal });
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({ credentials: 'include', signal });
-  });
-
   it('sends the displayed 1d range as today on every usage request surface', async () => {
     const fetchMock = mockJSON({});
 
-    await fetchKeyOverview({ range: '1d' });
     await fetchUsageOverview({ range: '1d' });
     await fetchUsageEvents({ range: '1d' });
     await fetchAnalysis({ range: '1d' });
 
-    expect(fetchMock.mock.calls).toHaveLength(4);
+    expect(fetchMock.mock.calls).toHaveLength(3);
     for (const [url] of fetchMock.mock.calls) {
       expect(new URL(String(url), 'http://localhost').searchParams.get('range')).toBe('today');
     }
@@ -105,13 +52,12 @@ describe('fetchUsageEvents', () => {
       end: '2026-07-17',
     };
 
-    await fetchKeyOverview(request);
     await fetchUsageOverview(request);
     await fetchUsageEvents(request);
     await exportUsageEvents(request, 'csv');
     await fetchAnalysis(request);
 
-    expect(fetchMock.mock.calls).toHaveLength(5);
+    expect(fetchMock.mock.calls).toHaveLength(4);
     for (const [rawURL] of fetchMock.mock.calls) {
       const params = new URL(String(rawURL), 'http://localhost').searchParams;
       expect(params.get('range')).toBe('custom');
@@ -121,12 +67,11 @@ describe('fetchUsageEvents', () => {
     }
   });
 
-  it('preserves the realtime insight block for both admin and Key Viewer responses', async () => {
+  it('preserves the realtime insight block for administrator responses', async () => {
     vi.stubGlobal('window', { __APP_BASE_PATH__: undefined });
     const insights = { summary: { requests: 12, failures: 2, cost: null }, outcomes: [{ bucket: '2026-09-12T12:00:00+08:00', requests: 12, failures: 2 }] };
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ insights }) } as Response);
     expect((await fetchUsageOverviewRealtime()).insights).toEqual(insights);
-    expect((await fetchKeyOverviewRealtime()).insights).toEqual(insights);
   });
 
   it('loads realtime overview from dedicated endpoints', async () => {
@@ -135,23 +80,14 @@ describe('fetchUsageEvents', () => {
 
     await fetchUsageOverview({ range: '24h' }, signal, '9007199254740993');
     await fetchUsageOverviewRealtime({ signal, apiKeyId: '9007199254740993', window: '60m' });
-    await fetchKeyOverview({ range: '8h' }, signal);
-    await fetchKeyOverviewRealtime({ window: '30m', signal });
 
     const overviewUrl = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost');
     const overviewRealtimeUrl = new URL(String(fetchMock.mock.calls[1][0]), 'http://localhost');
-    const keyOverviewUrl = new URL(String(fetchMock.mock.calls[2][0]), 'http://localhost');
-    const keyOverviewRealtimeUrl = new URL(String(fetchMock.mock.calls[3][0]), 'http://localhost');
     expect(overviewUrl.pathname).toBe('/api/v1/usage/overview');
     expect(overviewUrl.searchParams.get('realtime_window')).toBeNull();
     expect(overviewRealtimeUrl.pathname).toBe('/api/v1/usage/overview/realtime');
     expect(overviewRealtimeUrl.searchParams.get('window')).toBe('60m');
     expect(overviewRealtimeUrl.searchParams.get('api_key_id')).toBe('9007199254740993');
-    expect(keyOverviewUrl.pathname).toBe('/api/v1/key-overview');
-    expect(keyOverviewUrl.searchParams.get('realtime_window')).toBeNull();
-    expect(keyOverviewRealtimeUrl.pathname).toBe('/api/v1/key-overview/realtime');
-    expect(keyOverviewRealtimeUrl.searchParams.get('window')).toBe('30m');
-    expect(keyOverviewRealtimeUrl.searchParams.get('api_key_id')).toBeNull();
   });
 
   it('loads Recent Activity with the same time query contract as Overview', async () => {
@@ -163,10 +99,8 @@ describe('fetchUsageEvents', () => {
       apiKeyId: '9007199254740993',
       signal,
     });
-    await fetchKeyActivity({ request: { range: '30d' }, signal });
 
     const usageUrl = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost');
-    const keyUrl = new URL(String(fetchMock.mock.calls[1][0]), 'http://localhost');
     expect(usageUrl.pathname).toBe('/api/v1/usage/activity');
     expect(usageUrl.searchParams.get('window')).toBeNull();
     expect(usageUrl.searchParams.get('api_key_id')).toBe('9007199254740993');
@@ -174,10 +108,6 @@ describe('fetchUsageEvents', () => {
     expect(usageUrl.searchParams.get('unit')).toBe('day');
     expect(usageUrl.searchParams.get('start')).toBe('2026-07-15');
     expect(usageUrl.searchParams.get('end')).toBe('2026-07-21');
-    expect(keyUrl.pathname).toBe('/api/v1/key-activity');
-    expect(keyUrl.searchParams.get('window')).toBeNull();
-    expect(keyUrl.searchParams.get('range')).toBe('30d');
-    expect(keyUrl.searchParams.get('api_key_id')).toBeNull();
   });
 
   it('loads one-year Recent Activity through its dedicated window parameter', async () => {
@@ -185,16 +115,13 @@ describe('fetchUsageEvents', () => {
     const signal = new AbortController().signal;
 
     await fetchUsageActivity({ request: { window: 'year' }, apiKeyId: '42', signal });
-    await fetchKeyActivity({ request: { window: 'year' }, signal });
 
     const usageUrl = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost');
-    const keyUrl = new URL(String(fetchMock.mock.calls[1][0]), 'http://localhost');
-    for (const url of [usageUrl, keyUrl]) {
+    for (const url of [usageUrl]) {
       expect(url.searchParams.get('window')).toBe('year');
       expect(url.searchParams.get('range')).toBeNull();
     }
     expect(usageUrl.searchParams.get('api_key_id')).toBe('42');
-    expect(keyUrl.searchParams.get('api_key_id')).toBeNull();
   });
 
   it('loads calendar-day Recent Activity through dedicated window parameters', async () => {
@@ -202,20 +129,16 @@ describe('fetchUsageEvents', () => {
     const signal = new AbortController().signal;
 
     await fetchUsageActivity({ request: { window: 'today' }, apiKeyId: '42', signal });
-    await fetchKeyActivity({ request: { window: 'yesterday' }, signal });
 
     const usageUrl = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost');
-    const keyUrl = new URL(String(fetchMock.mock.calls[1][0]), 'http://localhost');
     expect(usageUrl.searchParams.get('window')).toBe('today');
-    expect(keyUrl.searchParams.get('window')).toBe('yesterday');
-    for (const url of [usageUrl, keyUrl]) {
+    for (const url of [usageUrl]) {
       expect(url.searchParams.get('range')).toBeNull();
     }
     expect(usageUrl.searchParams.get('api_key_id')).toBe('42');
-    expect(keyUrl.searchParams.get('api_key_id')).toBeNull();
   });
 
-  it('normalizes key overview realtime responses that omit internal usage dimensions', async () => {
+  it('normalizes overview realtime responses that omit internal usage dimensions', async () => {
     const fetchMock = mockJSON({
       window: '30m',
       bucket_seconds: 60,
@@ -227,7 +150,7 @@ describe('fetchUsageEvents', () => {
     });
     const signal = new AbortController().signal;
 
-    const response = await fetchKeyOverviewRealtime({ window: '30m', signal });
+    const response = await fetchUsageOverviewRealtime({ window: '30m', signal });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(response.current_usage.models).toEqual([{ key: 'gpt-5', label: 'gpt-5', tokens: 20, requests: 1, share: 100 }]);

@@ -9,7 +9,9 @@ import (
 	"cpa-usage-keeper/internal/cpa/dto/authfiles"
 	"cpa-usage-keeper/internal/cpa/dto/response"
 	"cpa-usage-keeper/internal/entities"
+	"cpa-usage-keeper/internal/providers"
 	"cpa-usage-keeper/internal/repository"
+
 	"gorm.io/gorm"
 )
 
@@ -34,7 +36,11 @@ func syncAuthFiles(ctx context.Context, db *gorm.DB, result *response.AuthFilesR
 	identities := make([]entities.UsageIdentity, 0, len(result.Payload.Files))
 	// 每个 Auth File 都通过原映射和类型扩展生成 OAuth identity。
 	for _, file := range result.Payload.Files {
-		// 按输入顺序加入整体 replace 清单。
+		if !providers.Supported(file.Type) {
+			continue
+		}
+		// Normalize accepted native types before storing filter metadata.
+		file.Type = providers.Normalize(file.Type)
 		identities = append(identities, authFileUsageIdentity(file))
 	}
 	// Auth Files 成功空列表也进入整个 auth type replace，保持旧 stale 语义。
@@ -46,15 +52,13 @@ func syncAuthFiles(ctx context.Context, db *gorm.DB, result *response.AuthFilesR
 	return nil
 }
 
-// authFileUsageIdentityExtension 为已有 Codex 与 xAI Auth File 追加专属字段，不改变通用映射。
+// authFileUsageIdentityExtension preserves Codex subscription metadata.
 type authFileUsageIdentityExtension func(authfiles.AuthFile, *entities.UsageIdentity)
 
 // authFileUsageIdentityExtensions 按规范化 Auth File type 选择既有专属解析逻辑。
 var authFileUsageIdentityExtensions = map[string]authFileUsageIdentityExtension{
 	// Codex 解析 ChatGPT id_token 的账户、窗口和套餐字段。
 	"codex": extendCodexAuthFileUsageIdentity,
-	// xAI 解析 CPA claims 中的稳定 user id 候选。
-	"xai": extendXAIAuthFileUsageIdentity,
 }
 
 // authFileUsageIdentity 先走通用身份映射，再按 type 追加既有专属字段。
@@ -66,8 +70,6 @@ func authFileUsageIdentity(file authfiles.AuthFile) entities.UsageIdentity {
 		// 专属扩展只修改自己负责的 nullable 字段。
 		extend(file, &identity)
 	}
-	// ProjectID 继续按既有 Gemini 家族规则解析，unsupported type 返回 nil。
-	identity.ProjectID = resolveAuthFileProjectID(file)
 	// 返回完整 OAuth identity 供 repository replace。
 	return identity
 }
@@ -113,10 +115,4 @@ func extendCodexAuthFileUsageIdentity(file authfiles.AuthFile, identity *entitie
 	identity.ActiveUntil = resolveCodexActiveUntil(file)
 	// PlanType 继续保留 id_token 的套餐类型。
 	identity.PlanType = resolveCodexPlanType(file)
-}
-
-// extendXAIAuthFileUsageIdentity 只为 OAuth/Auth File xAI 身份写入 claims user id。
-func extendXAIAuthFileUsageIdentity(file authfiles.AuthFile, identity *entities.UsageIdentity) {
-	// 未命中候选时保持 nil，使成功重同步可以清掉旧值。
-	identity.XAIUserID = resolveXAIUserID(file)
 }

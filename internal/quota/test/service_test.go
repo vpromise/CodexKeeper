@@ -83,19 +83,12 @@ func TestServiceResolvesSubscription(t *testing.T) {
 			Usage:   &quota.ClaudeUsagePayload{FiveHour: &quota.ClaudeUsageWindow{Utilization: 25}},
 			Profile: &quota.ClaudeProfileResponse{Account: &quota.ClaudeProfileAccount{HasClaudeMax: new(true)}},
 		}},
-		{"Antigravity realtime", "antigravity", "", "ultra-lite", quota.AntigravityResult{
-			Quota:        &quota.AntigravityQuotaPayload{Groups: []quota.AntigravityQuotaGroup{{DisplayName: "Gemini Models", Buckets: []quota.AntigravityQuotaBucket{{BucketID: "gemini-5h", RemainingFraction: new(0.5)}}}}},
-			Subscription: &quota.AntigravitySubscriptionPayload{PaidTier: &quota.GeminiCliUserTier{ID: "g1-ultra-lite-tier", Name: "Ultra Lite"}},
-		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db := openQuotaTestDB(t)
 			identity := entities.UsageIdentity{AuthType: entities.UsageIdentityAuthTypeAuthFile, Identity: tc.provider + "-auth", Provider: tc.provider, Type: tc.provider, Name: "auth file"}
 			if tc.identityPlan != "" {
 				identity.PlanType = &tc.identityPlan
-			}
-			if tc.provider == "antigravity" {
-				identity.ProjectID = new("project-123")
 			}
 			seedUsageIdentity(t, db, identity)
 			handler := &recordingProviderHandler{output: quota.ProviderOutput{Provider: tc.provider, Result: tc.result}}
@@ -111,24 +104,6 @@ func TestServiceResolvesSubscription(t *testing.T) {
 				t.Fatalf("unexpected subscription tier: %+v", response.Subscription)
 			}
 		})
-	}
-}
-
-func TestServiceFallsBackToTypeWhenProviderMissing(t *testing.T) {
-	db := openQuotaTestDB(t)
-	seedUsageIdentity(t, db, entities.UsageIdentity{AuthType: entities.UsageIdentityAuthTypeAuthFile, Identity: "gemini-auth", Provider: "Gemini", Type: "gemini-cli", Name: "auth file"})
-	handler := &recordingProviderHandler{output: quota.ProviderOutput{Provider: "gemini-cli", Result: quota.GeminiCLIResult{Quota: &quota.GeminiCliQuotaPayload{Buckets: []quota.GeminiCliQuotaBucket{{ModelID: "gemini-2.5-pro_vertex", TokenType: "PROMPT", RemainingAmount: 42}}}}}}
-	service := newQuotaServiceWithRegistry(t, db, quota.NewProviderRegistry(map[string]quota.ProviderHandler{"gemini-cli": handler}))
-
-	response, err := service.Check(context.Background(), quota.CheckRequest{AuthIndex: "gemini-auth"})
-	if err != nil {
-		t.Fatalf("Check returned error: %v", err)
-	}
-	if response.ID != "gemini-auth" || len(response.Quota) != 1 || response.Quota[0].Key != "bucket.gemini-2.5-pro_vertex.PROMPT" {
-		t.Fatalf("unexpected check response: %+v", response)
-	}
-	if len(handler.inputs) != 1 {
-		t.Fatalf("unexpected provider inputs: %+v", handler.inputs)
 	}
 }
 

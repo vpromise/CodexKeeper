@@ -15,7 +15,7 @@ func TestUsageOverviewAcceptsCustomDayRangeOlderThanThirtyDays(t *testing.T) {
 	startDay := today.AddDate(0, 0, -120)
 	expectedEnd := today.AddDate(0, 0, 1)
 	query := url.Values{"range": {"custom"}, "unit": {"day"}, "start": {startDay.Format(time.DateOnly)}, "end": {today.Format(time.DateOnly)}}
-	for _, viewer := range []bool{false, true} {
+	for _, viewer := range []bool{false} {
 		path, keyID := "/api/v1/usage/overview", ""
 		provider := &usageEventsStub{}
 		var router http.Handler = NewRouter(nil, nil, provider, nil, AuthConfig{}, nil, "")

@@ -303,59 +303,6 @@ describe('AuthFileCredentialsSection quota usage mode rendering', () => {
     expect(estimatedHtml).toContain('$2.50')
   })
 
-  it('renders each canonical Antigravity group once above its window bars', () => {
-    const groupedRow = {
-      ...row,
-      displayQuotas: [
-        {
-          ...quota,
-          key: 'bucket.antigravity-gemini-models.gemini-5h',
-          label: '5h',
-          scope: 'quota_group',
-          groupKey: 'antigravity-gemini-models',
-          groupLabel: 'Gemini Models',
-          groupDescription: 'Models within this group: Gemini Flash, Gemini Pro',
-          resetText: '2026-05-09T12:00:00Z',
-        },
-        {
-          ...quota,
-          key: 'bucket.antigravity-gemini-models.gemini-weekly',
-          label: 'Weekly',
-          scope: 'quota_group',
-          groupKey: 'antigravity-gemini-models',
-          groupLabel: 'Gemini Models',
-          groupDescription: 'Models within this group: Gemini Flash, Gemini Pro',
-          resetText: '2026-05-10T12:00:00Z',
-        },
-        {
-          ...quota,
-          key: 'bucket.antigravity-claude-and-gpt-models.third-party-5h',
-          label: '5h',
-          scope: 'quota_group',
-          groupKey: 'antigravity-claude-and-gpt-models',
-          groupLabel: 'Claude and GPT models',
-          groupDescription: 'Claude and GPT share this quota.',
-          resetText: '2026-05-09T12:00:00Z',
-        },
-      ],
-    } as AuthFileCredentialRow
-
-    const html = renderToStaticMarkup(createElement(AuthFileQuotaPanel, { row: groupedRow, quotaUsageMode: 'current' }))
-
-    expect(html).toContain('>5h<')
-    expect(html).toContain('>Weekly<')
-    expect(html.match(/Gemini Models/g)).toHaveLength(1)
-    expect(html.match(/Claude and GPT models/g)).toHaveLength(1)
-    expect(html.match(/credentialQuotaGroupBlock/g)).toHaveLength(2)
-    expect(html).toContain('role="tooltip"')
-    expect(html).toContain('aria-describedby=')
-    expect(html).toContain('Models within this group: Gemini Flash, Gemini Pro')
-    expect(html).not.toContain('title="Models within this group: Gemini Flash, Gemini Pro"')
-    expect(html.indexOf('Gemini Models')).toBeLessThan(html.indexOf('credentialQuotaTrack'))
-    expect(html).toContain('1.00M')
-    expect(html).toContain('$2.50')
-  })
-
   it('keeps ordinary and non-canonical quota rows on the existing flat bar path', () => {
     const ordinaryRow = {
       ...row,
@@ -376,52 +323,6 @@ describe('AuthFileCredentialsSection quota usage mode rendering', () => {
     expect(html).not.toContain('credentialQuotaGroupBlock')
     expect(html).toContain('Other Provider Group')
     expect(html.match(/credentialQuotaBarBlock/g)).toHaveLength(2)
-  })
-
-  it('preserves non-adjacent canonical group segments and resets flat tooltip columns after a group', () => {
-    const mixedRow = {
-      ...row,
-      displayQuotas: [
-        {
-          ...quota,
-          key: 'bucket.antigravity-gemini-models.gemini-5h',
-          label: '5h',
-          scope: 'quota_group',
-          groupKey: 'antigravity-gemini-models',
-          groupLabel: 'Gemini Models',
-        },
-        {
-          ...quota,
-          key: 'other.5h',
-          label: 'Other 5h',
-          scope: 'quota_group',
-          groupKey: 'other-provider-group',
-          groupLabel: 'Other Provider Group',
-        },
-        {
-          ...quota,
-          key: 'other.weekly',
-          label: 'Other Weekly',
-          scope: 'quota_group',
-          groupKey: 'other-provider-group',
-          groupLabel: 'Other Provider Group',
-        },
-        {
-          ...quota,
-          key: 'bucket.antigravity-gemini-models.gemini-weekly',
-          label: 'Weekly',
-          scope: 'quota_group',
-          groupKey: 'antigravity-gemini-models',
-          groupLabel: 'Gemini Models',
-        },
-      ],
-    } as AuthFileCredentialRow
-
-    const html = renderToStaticMarkup(createElement(AuthFileQuotaPanel, { row: mixedRow, quotaUsageMode: 'current' }))
-
-    expect(html.match(/Gemini Models/g)).toHaveLength(2)
-    expect(html.indexOf('Other 5h')).toBeLessThan(html.lastIndexOf('Gemini Models'))
-    expect(html.match(/credentialQuotaBarTooltipRight/g)).toHaveLength(1)
   })
 
   it('keeps the reset time visible when Codex has no token or cost usage', () => {

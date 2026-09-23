@@ -13,6 +13,7 @@ import (
 	"cpa-usage-keeper/internal/cpa/dto/response"
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/repository"
+
 	"gorm.io/gorm"
 )
 
@@ -26,10 +27,10 @@ func TestSyncMetadataPreservesAuthFilesAndManagementAPIKeySemantics(t *testing.T
 	fetcher := newMetadataTestFetcher()
 	// Auth Files 覆盖 email/label/name/auth-index fallback 和专属扩展字段。
 	fetcher.setAuthFiles([]authfiles.AuthFile{
-		{AuthIndex: "auth-email", Name: "claude.json", Path: "/data/auths/claude.json", Email: "user@example.com", Label: "ignored-label", Type: "claude", Provider: "Claude", Prefix: "oauth-prefix", Priority: metadataIntPointer(6), Disabled: metadataBoolPointer(false), Note: metadataStringPointer("auth note")},
-		{AuthIndex: "auth-label", Name: "gemini.json", Label: "Gemini Label", Type: "gemini", Provider: "Gemini", ProjectID: "project-gemini"},
+		{AuthIndex: "auth-email", Name: "claude.json", Path: "/data/auths/claude.json", Email: "user@example.com", Label: "ignored-label", Type: " CLAUDE ", Provider: "Claude", Prefix: "oauth-prefix", Priority: metadataIntPointer(6), Disabled: metadataBoolPointer(false), Note: metadataStringPointer("auth note")},
+		{AuthIndex: "auth-label", Name: "claude-label.json", Label: "Claude Label", Type: "claude", Provider: "Claude"},
 		{AuthIndex: "auth-name", Name: "Codex Name", Type: "codex", Provider: "Codex", IDToken: &authfiles.AuthFileIDToken{AccountID: &accountID, ActiveStart: &activeStart, ActiveUntil: &activeUntil, PlanType: &planType}},
-		{AuthIndex: "auth-index-fallback", Type: "vertex", Provider: "Vertex"},
+		{AuthIndex: "auth-index-fallback", Type: "codex", Provider: "Codex"},
 	})
 	fetcher.managementAPIKeysResult = &response.ManagementAPIKeysResult{StatusCode: 200, Payload: cpaapikeys.ManagementAPIKeysResponse{APIKeys: []string{"sk-alpha123456", "sk-beta654321"}}}
 	syncer := newMetadataTestSyncer(db, fetcher, func() time.Time { return now })
@@ -54,7 +55,7 @@ func TestSyncMetadataPreservesAuthFilesAndManagementAPIKeySemantics(t *testing.T
 		t.Fatalf("email auth optional metadata = %+v", emailRow)
 	}
 	labelRow := identities[metadataIdentityKey(entities.UsageIdentityAuthTypeAuthFile, "auth-label")]
-	if labelRow.Name != "Gemini Label" || labelRow.ProjectID == nil || *labelRow.ProjectID != "project-gemini" {
+	if labelRow.Name != "Claude Label" {
 		t.Fatalf("label auth identity = %+v", labelRow)
 	}
 	codexRow := identities[metadataIdentityKey(entities.UsageIdentityAuthTypeAuthFile, "auth-name")]
@@ -124,11 +125,11 @@ func TestSyncMetadataProviderWarningStillRunsHistoricalStatsCatchUp(t *testing.T
 	}
 	fetcher := newMetadataTestFetcher()
 	fetcher.standardResults["codex"] = &response.ProviderKeyConfigResult{StatusCode: 200, Payload: []providerconfig.ProviderKeyConfig{{APIKey: "codex-secret", Name: "Codex History", AuthIndex: "codex-history"}}}
-	fetcher.standardResults["gemini"] = nil
-	fetcher.standardErrors["gemini"] = errors.New("gemini unavailable")
+	fetcher.standardResults["claude"] = nil
+	fetcher.standardErrors["claude"] = errors.New("claude unavailable")
 	syncer := newMetadataTestSyncer(db, fetcher, func() time.Time { return now })
 	err = syncer.SyncMetadata(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "fetch gemini api keys: gemini unavailable") {
+	if err == nil || !strings.Contains(err.Error(), "fetch claude api keys: claude unavailable") {
 		t.Fatalf("provider warning = %v", err)
 	}
 	identities := loadMetadataIdentityMap(t, db)
@@ -147,8 +148,8 @@ func TestSyncMetadataProviderPersistenceErrorSuppressesFetchWarning(t *testing.T
 	fetcher := newMetadataTestFetcher()
 	fetcher.managementAPIKeysResult = &response.ManagementAPIKeysResult{StatusCode: 200, Payload: cpaapikeys.ManagementAPIKeysResponse{APIKeys: []string{"sk-independent123456"}}}
 	fetcher.standardResults["codex"] = &response.ProviderKeyConfigResult{StatusCode: 200, Payload: []providerconfig.ProviderKeyConfig{{APIKey: "codex-secret", AuthIndex: "codex-persist-fail", Name: "Codex"}}}
-	fetcher.standardResults["gemini"] = nil
-	fetcher.standardErrors["gemini"] = errors.New("gemini unavailable")
+	fetcher.standardResults["claude"] = nil
+	fetcher.standardErrors["claude"] = errors.New("claude unavailable")
 	if err := db.Callback().Create().Before("gorm:create").Register("test:block_provider_identity_create", func(tx *gorm.DB) {
 		if tx.Statement.Table == "usage_identities" {
 			tx.AddError(errors.New("provider persistence blocked"))
@@ -161,7 +162,7 @@ func TestSyncMetadataProviderPersistenceErrorSuppressesFetchWarning(t *testing.T
 	if err == nil || !strings.Contains(err.Error(), "sync provider usage identities: create usage identities: provider persistence blocked") {
 		t.Fatalf("provider persistence error = %v", err)
 	}
-	if strings.Contains(err.Error(), "gemini unavailable") {
+	if strings.Contains(err.Error(), "claude unavailable") {
 		t.Fatalf("provider fetch warning was not suppressed: %v", err)
 	}
 	identities := loadMetadataIdentityMap(t, db)
@@ -200,80 +201,5 @@ func TestSyncMetadataManagementPersistenceErrorKeepsProviderWriteAndStopsCatchUp
 	providerRow := identities[metadataIdentityKey(entities.UsageIdentityAuthTypeAIProvider, "provider-survives")]
 	if providerRow.Identity != "provider-survives" || providerRow.LookupKey != "provider-secret" || providerRow.IsDeleted || providerRow.TotalRequests != 0 || providerRow.LastAggregatedUsageEventID != 0 || providerRow.StatsUpdatedAt != nil {
 		t.Fatalf("provider after management persistence error = %+v", providerRow)
-	}
-}
-
-func TestSyncMetadataInteractionsRestoreCatchesUpOnlyNewHistoricalEvents(t *testing.T) {
-	db := openMetadataTestDatabase(t, "interactions-restore-catch-up.db")
-	firstEventTime := time.Date(2026, 7, 15, 8, 0, 0, 0, time.UTC)
-	firstSyncTime := firstEventTime.Add(time.Hour)
-	staleTime := firstSyncTime.Add(time.Hour)
-	secondEventTime := staleTime.Add(time.Hour)
-	restoreTime := secondEventTime.Add(time.Hour)
-	_, _, err := repository.InsertUsageEvents(db, []entities.UsageEvent{{EventKey: "interactions-history-1", AuthType: "apikey", AuthIndex: "interactions-history", Model: "gemini-2.5", Timestamp: firstEventTime, InputTokens: 3, OutputTokens: 5, TotalTokens: 8}})
-	if err != nil {
-		t.Fatalf("seed first Interactions event: %v", err)
-	}
-	fetcher := newMetadataTestFetcher()
-	fetcher.standardResults["gemini-interactions"] = &response.ProviderKeyConfigResult{StatusCode: 200, Payload: []providerconfig.ProviderKeyConfig{{APIKey: "interactions-secret", AuthIndex: "interactions-history", Name: "Interactions History"}}}
-	currentNow := firstSyncTime
-	syncer := newMetadataTestSyncer(db, fetcher, func() time.Time { return currentNow })
-	if err := syncer.SyncMetadata(context.Background()); err != nil {
-		t.Fatalf("initial Interactions SyncMetadata returned error: %v", err)
-	}
-	// 模拟后台 runner 完成首次 identity 历史补算。
-	if err := repository.AggregateUsageIdentityStats(context.Background(), db, firstSyncTime); err != nil {
-		t.Fatalf("aggregate initial Interactions history: %v", err)
-	}
-	initialRows := loadMetadataIdentityMap(t, db)
-	initial := initialRows[metadataIdentityKey(entities.UsageIdentityAuthTypeAIProvider, "interactions-history")]
-	if initial.ID == 0 || initial.Type != "gemini-interactions" || initial.TotalRequests != 1 || initial.InputTokens != 3 || initial.OutputTokens != 5 || initial.TotalTokens != 8 || initial.LastAggregatedUsageEventID == 0 {
-		t.Fatalf("initial Interactions identity = %+v", initial)
-	}
-	firstCursor := initial.LastAggregatedUsageEventID
-	// alias 是 Keeper-only 字段，恢复不能清空。
-	if err := repository.UpdateUsageIdentityAlias(context.Background(), db, initial.ID, "Local Interactions Alias"); err != nil {
-		t.Fatalf("set Interactions alias: %v", err)
-	}
-	fetcher.standardResults["gemini-interactions"] = &response.ProviderKeyConfigResult{StatusCode: 200, Payload: []providerconfig.ProviderKeyConfig{}}
-	currentNow = staleTime
-	if err := syncer.SyncMetadata(context.Background()); err != nil {
-		t.Fatalf("stale Interactions SyncMetadata returned error: %v", err)
-	}
-	_, _, err = repository.InsertUsageEvents(db, []entities.UsageEvent{{EventKey: "interactions-history-2", AuthType: "apikey", AuthIndex: "interactions-history", Model: "gemini-2.5", Timestamp: secondEventTime, InputTokens: 7, OutputTokens: 11, TotalTokens: 18}})
-	if err != nil {
-		t.Fatalf("seed second Interactions event: %v", err)
-	}
-	fetcher.standardResults["gemini-interactions"] = &response.ProviderKeyConfigResult{StatusCode: 200, Payload: []providerconfig.ProviderKeyConfig{{APIKey: "interactions-secret-refreshed", AuthIndex: "interactions-history", Name: "Interactions Restored"}}}
-	currentNow = restoreTime
-	if err := syncer.SyncMetadata(context.Background()); err != nil {
-		t.Fatalf("restore Interactions SyncMetadata returned error: %v", err)
-	}
-	// 模拟后台 runner 从既有每行 cursor 继续补算恢复期间新增事件。
-	if err := repository.AggregateUsageIdentityStats(context.Background(), db, restoreTime); err != nil {
-		t.Fatalf("aggregate restored Interactions history: %v", err)
-	}
-	restoredRows := loadMetadataIdentityMap(t, db)
-	restored := restoredRows[metadataIdentityKey(entities.UsageIdentityAuthTypeAIProvider, "interactions-history")]
-	if restored.ID != initial.ID || !restored.CreatedAt.Equal(initial.CreatedAt) || restored.Alias == nil || *restored.Alias != "Local Interactions Alias" || restored.IsDeleted || restored.DeletedAt != nil || restored.Name != "Interactions Restored" || restored.LookupKey != "interactions-secret-refreshed" {
-		// 输出完整行定位恢复字段或 Keeper-only 数据丢失。
-		t.Fatalf("restored Interactions metadata = %+v", restored)
-	}
-	// 统计只增加第二条事件，首轮累计不能清零或重复。
-	if restored.TotalRequests != 2 || restored.InputTokens != 10 || restored.OutputTokens != 16 || restored.TotalTokens != 26 || restored.LastAggregatedUsageEventID <= firstCursor {
-		t.Fatalf("restored Interactions stats = %+v", restored)
-	}
-	currentNow = restoreTime.Add(time.Hour)
-	if err := syncer.SyncMetadata(context.Background()); err != nil {
-		t.Fatalf("repeat Interactions SyncMetadata returned error: %v", err)
-	}
-	// 重复后台 catch-up 必须保持每行 cursor 幂等，不得再次累计旧事件。
-	if err := repository.AggregateUsageIdentityStats(context.Background(), db, currentNow); err != nil {
-		t.Fatalf("aggregate repeated Interactions history: %v", err)
-	}
-	repeatedRows := loadMetadataIdentityMap(t, db)
-	repeated := repeatedRows[metadataIdentityKey(entities.UsageIdentityAuthTypeAIProvider, "interactions-history")]
-	if repeated.TotalRequests != 2 || repeated.InputTokens != 10 || repeated.OutputTokens != 16 || repeated.TotalTokens != 26 || repeated.LastAggregatedUsageEventID != restored.LastAggregatedUsageEventID {
-		t.Fatalf("repeated Interactions stats = %+v", repeated)
 	}
 }

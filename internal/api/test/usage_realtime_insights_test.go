@@ -41,14 +41,14 @@ func TestRealtimeInsightsAPIMapsCachedTotalsAndScopesViewer(t *testing.T) {
 	}
 	t.Cleanup(cache.Close)
 	provider := service.NewUsageServiceWithRecentCache(db, cache, emptyPricingCatalogForTest())
-	keys := &keyViewerAnalysisKeyStub{row: key}
+	keys := &analysisKeyStub{row: key}
 	sessions := auth.NewSessionManager(time.Hour)
 	token, _, err := sessions.CreateAPIKeyViewerWithSource(42, auth.SessionSourceStandard)
 	if err != nil {
 		t.Fatal(err)
 	}
 	authConfig := AuthConfig{Enabled: true, LoginPassword: "secret", SessionTTL: time.Hour}
-	for _, viewer := range []bool{false, true} {
+	for _, viewer := range []bool{false} {
 		router := NewRouter(nil, nil, provider, nil, AuthConfig{}, nil, "", OptionalProviders{CPAAPIKeys: keys})
 		path := "/api/v1/usage/overview/realtime?window=15m"
 		if viewer {

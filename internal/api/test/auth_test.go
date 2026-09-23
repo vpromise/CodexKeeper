@@ -121,77 +121,6 @@ func TestAuthLoginSetsCookieAndUnlocksProtectedRoute(t *testing.T) {
 
 }
 
-func TestAuthAPIKeyLoginSetsViewerSessionCookieAndSessionSummary(t *testing.T) {
-	sessions := auth.NewSessionManager(time.Hour)
-	config := AuthConfig{Enabled: true, LoginPassword: "secret", SessionTTL: time.Hour, BasePath: "/cpa"}
-	keyProvider := &authLoginKeyStub{row: entities.CPAAPIKey{ID: 42, APIKey: "sk-live123456", DisplayKey: "sk-l************3456", KeyAlias: "Team Key"}}
-	router := NewRouter(nil, nil, nil, nil, config, NewAuthHandler(config, sessions), "/cpa", OptionalProviders{CPAAPIKeys: keyProvider})
-
-	loginResp := serveCredentialMutation(router, http.MethodPost, "/cpa/api/v1/auth/api-key-login", `{"apiKey":"sk-live123456"}`)
-	if loginResp.Code != http.StatusNoContent {
-		t.Fatalf("expected API key login status 204, got %d %s", loginResp.Code, loginResp.Body.String())
-	}
-	cookies := loginResp.Result().Cookies()
-	if len(cookies) == 0 || cookies[0].Path != "/cpa" {
-		t.Fatalf("expected auth cookie with /cpa path, got %+v", cookies)
-	}
-	if keyProvider.byValueKey != "sk-live123456" {
-		t.Fatalf("expected login to pass API key to provider, got %q", keyProvider.byValueKey)
-	}
-
-	sessionResp := serveAPIGet(router, "/cpa/api/v1/auth/session", cookies[0])
-
-	body := sessionResp.Body.String()
-	if sessionResp.Code != http.StatusOK || !strings.Contains(body, `"authenticated":true`) || !strings.Contains(body, `"role":"api_key_viewer"`) || !strings.Contains(body, `"api_key":{"display_key":"sk-*********123456","alias":"Team Key"}`) {
-		t.Fatalf("unexpected session response: %d %s", sessionResp.Code, body)
-	}
-	if strings.Contains(body, "sk-live123456") || strings.Contains(body, "sk-l************3456") {
-		t.Fatalf("expected session response not to expose raw API key: %s", body)
-	}
-}
-
-func TestAuthAPIKeyLoginFailuresAreGenericUnauthorized(t *testing.T) {
-	sessions := auth.NewSessionManager(time.Hour)
-	config := AuthConfig{Enabled: true, LoginPassword: "secret", SessionTTL: time.Hour}
-	keyProvider := &authLoginKeyStub{findErr: context.Canceled}
-	router := NewRouter(nil, nil, nil, nil, config, NewAuthHandler(config, sessions), "", OptionalProviders{CPAAPIKeys: keyProvider})
-
-	for _, body := range []string{`{"apiKey":"missing"}`, `{bad json}`} {
-		resp := serveCredentialMutation(router, http.MethodPost, "/api/v1/auth/api-key-login", body)
-		if resp.Code != http.StatusUnauthorized || !strings.Contains(resp.Body.String(), "invalid credentials") {
-			t.Fatalf("expected generic 401 for %s, got %d %s", body, resp.Code, resp.Body.String())
-		}
-	}
-}
-
-func TestAuthAPIKeyLoginSuccessClearsFailedAttempts(t *testing.T) {
-	sessions := auth.NewSessionManager(time.Hour)
-	config := AuthConfig{Enabled: true, LoginPassword: "secret", SessionTTL: time.Hour}
-	keyProvider := &authLoginKeyStub{findErr: context.Canceled}
-	router := NewRouter(nil, nil, nil, nil, config, NewAuthHandler(config, sessions), "", OptionalProviders{CPAAPIKeys: keyProvider})
-
-	for i := 0; i < 5-1; i++ {
-		resp := performLoginRequest(router, "/api/v1/auth/api-key-login", `{"apiKey":"missing"}`, "198.51.100.11:1234")
-		if resp.Code != http.StatusUnauthorized {
-			t.Fatalf("expected failed attempt %d to return 401, got %d", i+1, resp.Code)
-		}
-	}
-
-	keyProvider.findErr = nil
-	keyProvider.row = entities.CPAAPIKey{ID: 42, DisplayKey: "sk-*********live"}
-	successResp := performLoginRequest(router, "/api/v1/auth/api-key-login", `{"apiKey":"sk-live"}`, "198.51.100.11:1234")
-	if successResp.Code != http.StatusNoContent {
-		t.Fatalf("expected successful API key login to be allowed and clear failed attempts, got %d %s", successResp.Code, successResp.Body.String())
-	}
-
-	keyProvider.findErr = context.Canceled
-	resp := performLoginRequest(router, "/api/v1/auth/api-key-login", `{"apiKey":"missing"}`, "198.51.100.11:1234")
-
-	if resp.Code != http.StatusUnauthorized {
-		t.Fatalf("expected first failed attempt after successful API key login to return 401, got %d %s", resp.Code, resp.Body.String())
-	}
-}
-
 func TestAuthSessionClearsInactiveViewerSession(t *testing.T) {
 	sessions := auth.NewSessionManager(time.Hour)
 	token, _, err := sessions.CreateAPIKeyViewer(42)
@@ -253,13 +182,13 @@ func TestViewerSessionCannotAccessAdminManagementRoutes(t *testing.T) {
 	for _, path := range []string{"/api/v1/usage/api-keys", "/api/v1/usage/api-keys/settings", "/api/v1/auth/sessions"} {
 		resp := serveAPIGet(router, path, &http.Cookie{Name: standardSessionCookieName, Value: token})
 
-		if resp.Code != http.StatusForbidden {
-			t.Fatalf("%s: expected viewer session to be forbidden from admin route, got %d %s", path, resp.Code, resp.Body.String())
+		if resp.Code != http.StatusUnauthorized {
+			t.Fatalf("%s: expected legacy viewer session to be forbidden from admin route, got %d %s", path, resp.Code, resp.Body.String())
 		}
 	}
 }
 
-func TestAuthSessionManagementListsAdminAndAPIKeySessionsWithCurrentFirst(t *testing.T) {
+func TestAuthSessionManagementListsOnlyAdminsWithCurrentFirst(t *testing.T) {
 	sessions := auth.NewSessionManager(2 * time.Hour)
 	adminToken1, _, err := sessions.Create()
 	if err != nil {
@@ -311,15 +240,14 @@ func TestAuthSessionManagementListsAdminAndAPIKeySessionsWithCurrentFirst(t *tes
 	if err := json.Unmarshal(resp.Body.Bytes(), &parsed); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if len(parsed.Items) != 4 {
-		t.Fatalf("expected two admin rows and two API key rows, got %+v", parsed.Items)
+	if len(parsed.Items) != 2 {
+		t.Fatalf("expected only two admin rows, got %+v", parsed.Items)
 	}
 	if parsed.Items[0].Kind != "admin" || !parsed.Items[0].Current {
 		t.Fatalf("expected current admin session first, got %+v", parsed.Items)
 	}
 
 	var adminRows int
-	apiLabels := map[string]string{}
 	for _, item := range parsed.Items {
 		if item.ID == "" || item.LoginAt == "" || item.ExpiresAt == "" {
 			t.Fatalf("missing session metadata: %+v", item)
@@ -335,23 +263,12 @@ func TestAuthSessionManagementListsAdminAndAPIKeySessionsWithCurrentFirst(t *tes
 			if item.Role != string(auth.RoleAdmin) {
 				t.Fatalf("unexpected admin session row: %+v", item)
 			}
-		case "api_key":
-			if item.Role != string(auth.RoleAPIKeyViewer) || item.APIKeyID == "" {
-				t.Fatalf("unexpected API key session row: %+v", item)
-			}
-			apiLabels[item.APIKeyID] = item.Label + "\x00" + item.DisplayKey
 		default:
 			t.Fatalf("unexpected session item kind %q in %+v", item.Kind, item)
 		}
 	}
 	if adminRows != 2 {
 		t.Fatalf("expected two admin rows, got %d in %+v", adminRows, parsed.Items)
-	}
-	if apiLabels["42"] != "Team Key\x00sk-*********123456" {
-		t.Fatalf("expected API key 42 to use alias and canonical mask, got %q", apiLabels["42"])
-	}
-	if apiLabels["43"] != "sk-*********654321\x00sk-*********654321" {
-		t.Fatalf("expected API key 43 to fall back to masked key, got %q", apiLabels["43"])
 	}
 }
 
@@ -429,7 +346,7 @@ func TestAdminSessionCannotAccessKeyOverviewRoute(t *testing.T) {
 
 	resp := serveAPIGet(router, "/api/v1/key-overview?range=24h", &http.Cookie{Name: standardSessionCookieName, Value: token})
 
-	if resp.Code != http.StatusForbidden {
+	if resp.Code != http.StatusNotFound {
 		t.Fatalf("expected admin session to be forbidden from key overview route, got %d %s", resp.Code, resp.Body.String())
 	}
 }

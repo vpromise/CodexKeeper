@@ -6,14 +6,10 @@ type HandlerID string
 const (
 	// HandlerClaude 表示 CPA Claude parser 的 Input 不含 cache read/creation，需要由 Keeper 合并。
 	HandlerClaude HandlerID = "claude"
-	// HandlerGemini 表示 CPA Gemini parser 的 Output 不含独立 reasoning，需要由 Keeper 合并。
-	HandlerGemini HandlerID = "gemini"
 	// HandlerResponsesInclusive 表示 Input 已含 cache 且 Output 已含 reasoning 的 Responses 口径。
 	HandlerResponsesInclusive HandlerID = "responses-inclusive"
 	// HandlerStrictPassThrough 表示没有足够协议证据，只能保留既有 zero-only 兼容行为。
 	HandlerStrictPassThrough HandlerID = "strict-pass-through"
-	// HandlerOpenAICompatibility 表示 OpenAI-compatible 方言必须由有序兼容规则判断，不能假设标准 OpenAI 语义。
-	HandlerOpenAICompatibility HandlerID = "openai-compatibility"
 )
 
 // EvidenceSource 说明本次 handler 选择来自实际 CPA executor、历史 identity hint 或安全默认值。
@@ -96,7 +92,6 @@ const (
 	ActionBackfillCacheReadAlias     = "backfill_cache_read_alias"
 	ActionNormalizeClaudeInput       = "normalize_claude_input"
 	ActionNormalizeClaudeCachedAlias = "normalize_claude_cached_alias"
-	ActionNormalizeGeminiOutput      = "normalize_gemini_output"
 	ActionBackfillZeroTotal          = "backfill_zero_total"
 	ActionCorrectNonzeroTotal        = "correct_nonzero_total"
 )

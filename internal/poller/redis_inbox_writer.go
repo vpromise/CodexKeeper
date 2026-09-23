@@ -2,9 +2,11 @@ package poller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"cpa-usage-keeper/internal/providers"
 	"cpa-usage-keeper/internal/repository"
 	"gorm.io/gorm"
 )
@@ -33,7 +35,21 @@ func (w *RepositoryRedisInboxWriter) Insert(ctx context.Context, source string, 
 		// 调用方已取消时不再写数据库。
 		return 0, err
 	}
-	// 来源名由 runner 传入，完整落库便于区分 subscribe、redis pull 和 HTTP pull。
+	supported := make([]string, 0, len(messages))
+	for _, message := range messages {
+		var envelope struct {
+			Provider string `json:"provider"`
+			Executor string `json:"executor_type"`
+		}
+		if err := json.Unmarshal([]byte(message), &envelope); err == nil {
+			if _, ok := providers.UsageProvider(envelope.Provider, envelope.Executor); !ok {
+				continue
+			}
+		}
+		supported = append(supported, message)
+	}
+	messages = supported
+
 	rows, err := repository.InsertRedisUsageInboxRawMessages(w.db.WithContext(ctx), source, messages, receivedAt)
 	if err != nil {
 		// 插入失败交给 runner 记录 error 并进入对应失败路径。

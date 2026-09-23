@@ -15,12 +15,11 @@ import (
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/repository"
 	"cpa-usage-keeper/internal/service"
+
 	"gorm.io/gorm"
 )
 
 type standardMetadataHook func(context.Context) (*response.ProviderKeyConfigResult, error)
-
-type openAIMetadataHook func(context.Context) (*response.OpenAICompatibilityResult, error)
 
 // metadataTestFetcher 是八来源并发安全的函数式测试 fetcher，默认所有 endpoint 成功返回空列表。
 type metadataTestFetcher struct {
@@ -33,9 +32,6 @@ type metadataTestFetcher struct {
 	standardResults         map[string]*response.ProviderKeyConfigResult
 	standardErrors          map[string]error
 	standardHooks           map[string]standardMetadataHook
-	openAIResult            *response.OpenAICompatibilityResult
-	compatibilityError      error
-	openAIHook              openAIMetadataHook
 }
 
 func newMetadataTestFetcher() *metadataTestFetcher {
@@ -46,7 +42,6 @@ func newMetadataTestFetcher() *metadataTestFetcher {
 		standardResults:         make(map[string]*response.ProviderKeyConfigResult),
 		standardErrors:          make(map[string]error),
 		standardHooks:           make(map[string]standardMetadataHook),
-		openAIResult:            &response.OpenAICompatibilityResult{StatusCode: 200, Payload: []providerconfig.OpenAICompatibilityConfig{}},
 	}
 	for _, source := range []string{"codex", "xai", "gemini", "gemini-interactions", "claude", "vertex", "meta"} {
 		// 每个 source 使用独立 result 指针，测试可以只替换目标来源。
@@ -95,36 +90,8 @@ func (f *metadataTestFetcher) FetchCodexAPIKeys(ctx context.Context) (*response.
 	return f.fetchStandardProvider(ctx, "codex")
 }
 
-func (f *metadataTestFetcher) FetchXAIAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandardProvider(ctx, "xai")
-}
-
-func (f *metadataTestFetcher) FetchGeminiAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandardProvider(ctx, "gemini")
-}
-
-func (f *metadataTestFetcher) FetchInteractionsAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandardProvider(ctx, "gemini-interactions")
-}
-
 func (f *metadataTestFetcher) FetchClaudeAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
 	return f.fetchStandardProvider(ctx, "claude")
-}
-
-func (f *metadataTestFetcher) FetchVertexAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandardProvider(ctx, "vertex")
-}
-
-func (f *metadataTestFetcher) FetchMetaAPIKeys(ctx context.Context) (*response.ProviderKeyConfigResult, error) {
-	return f.fetchStandardProvider(ctx, "meta")
-}
-
-func (f *metadataTestFetcher) FetchOpenAICompatibility(ctx context.Context) (*response.OpenAICompatibilityResult, error) {
-	f.recordCall("openai")
-	if f.openAIHook != nil {
-		return f.openAIHook(ctx)
-	}
-	return f.openAIResult, f.compatibilityError
 }
 
 func openMetadataTestDatabase(t *testing.T, name string) *gorm.DB {
