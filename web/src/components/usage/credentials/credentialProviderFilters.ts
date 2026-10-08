@@ -53,7 +53,21 @@ export function normalizeCredentialProviderFilterKey(scope: CredentialProviderFi
     : 'all'
 }
 
-export function buildCredentialProviderFilterOptions(scope: CredentialProviderFilterScope, typeCounts: UsageIdentityTypeCount[]): CredentialProviderFilterOption[] {
+// null 表示没有有效的链接筛选；显式 all 必须区别于回退到本地偏好。
+export function resolveCredentialProviderFilterFromSearch(scope: CredentialProviderFilterScope, search: string): CredentialProviderFilterKey | null {
+  const value = new URLSearchParams(search).get('provider')
+  return value !== null && normalizeCredentialProviderFilterKey(scope, value) === value
+    ? value as CredentialProviderFilterKey
+    : null
+}
+
+export function buildCredentialProviderSearch(search: string, filter: CredentialProviderFilterKey): string {
+  const params = new URLSearchParams(search)
+  params.set('provider', filter)
+  return `?${params.toString()}`
+}
+
+export function buildCredentialProviderFilterOptions(scope: CredentialProviderFilterScope, typeCounts: UsageIdentityTypeCount[], selected: CredentialProviderFilterKey = 'all'): CredentialProviderFilterOption[] {
   const countsByType = new Map<string, number>()
   let allCount = 0
 
@@ -67,7 +81,7 @@ export function buildCredentialProviderFilterOptions(scope: CredentialProviderFi
     countsByType.set(item.type, (countsByType.get(item.type) ?? 0) + count)
   }
 
-  if (allCount <= 0) {
+  if (allCount <= 0 && selected === 'all') {
     return []
   }
 
@@ -76,7 +90,8 @@ export function buildCredentialProviderFilterOptions(scope: CredentialProviderFi
   // Only native credential types contribute to counts and filter buttons.
   for (const filter of credentialProviderFiltersForScope(scope)) {
     const count = filter.types.reduce((sum, type) => sum + (countsByType.get(type) ?? 0), 0)
-    if (count <= 0) {
+    // 链接指定的供应商即使暂时没有凭据，也保留选中项和返回 All 的入口。
+    if (count <= 0 && filter.key !== selected) {
       continue
     }
     options.push({ key: filter.key, labelKey: filter.labelKey, count, knownKey: filter.key })

@@ -63,6 +63,7 @@ describe('App session and navigation', () => {
   });
 
   it.each([
+    { role: 'admin', path: '/auth-files', button: '[data-password-login]', page: 'Admin' },
     { role: 'admin', path: '/analysis', button: '[data-password-login]', page: 'Admin' },
   ])('preserves the allowed path after $role login', async ({ role, path, button, page }) => {
     window.history.replaceState(null, '', `/cpa${path}?embed=cpamc`);
@@ -72,6 +73,15 @@ describe('App session and navigation', () => {
     expect(container.textContent).toContain(page);
     expect(window.location.pathname + window.location.search).toBe(`/cpa${path}?embed=cpamc`);
   });
+
+  it.each(['/auth-files', '/ai-provider'])('preserves provider links through password login at %s', async (path) => {
+    window.history.replaceState(null, '', `/cpa${path}?embed=cpamc&provider=codex&other=keep#details`);
+    api.getSession.mockResolvedValueOnce({ authenticated: false }).mockResolvedValueOnce({ authenticated: true, role: 'admin' });
+    await act(async () => root.render(<App />));
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-password-login]')!.click());
+    expect(window.location.pathname + window.location.search + window.location.hash).toBe(`/cpa${path}?embed=cpamc&provider=codex&other=keep#details`);
+  });
+
   it('rejects a stale API Key viewer session', async () => {
     api.getSession.mockResolvedValue({ authenticated: true, role: 'api_key_viewer' });
     await act(async () => root.render(<App />));

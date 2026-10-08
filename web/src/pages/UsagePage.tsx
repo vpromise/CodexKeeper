@@ -1,3 +1,4 @@
+import { CredentialEditModal } from '@/components/usage/credentials/CredentialEditModal';
 import { UsageComparisonCharts } from '@/components/usage/UsageComparisonCharts';
 import { useState, useMemo, useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +14,7 @@ import { Modal } from '@/components/ui/Modal';
 import { IconRefreshCw } from '@/components/ui/icons';
 import { updateCredentialDetailStats } from '@/components/usage/credentials/credentialViewModels';
 import { CREDENTIAL_PAGES_REFRESH_INTERVAL_MS } from '@/components/usage/credentials/useCredentialPages';
+import { buildCredentialProviderSearch } from '@/components/usage/credentials/credentialProviderFilters';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { useThemeStore } from '@/stores';
@@ -742,17 +744,6 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
     const loadedTab = loadUsageTab();
     return loadedTab;
   });
-  const activateUsageTab = useCallback((tab: UsageTab) => {
-    setActiveTab(tab);
-    window.history.replaceState(null, '', appPath(getUsageTabPath(tab)) + cpamcEmbedSearch());
-  }, []);
-  const handleUsageTabNavigation = useCallback((event: ReactMouseEvent<HTMLAnchorElement>, tab: UsageTab) => {
-    // 普通左键保持现有无刷新切换；组合键和中键交给原生链接打开新页面。
-    if (!shouldHandleUsageNavigation(event.nativeEvent)) return;
-
-    event.preventDefault();
-    activateUsageTab(tab);
-  }, [activateUsageTab]);
   const [loadedTimeRange] = useState(loadTimeRange);
   const pendingLegacyCustomRangeRef = useRef(loadedTimeRange.pendingLegacyCustomRange);
   const [timeRangeState, setTimeRangeState] = useState<StoredUsageRangeState>(loadedTimeRange.state);
@@ -930,7 +921,10 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
   const [eventsExportingFormat, setEventsExportingFormat] = useState<UsageEventsExportFormat | null>(null);
   const [eventsFilterOptionsLoaded, setEventsFilterOptionsLoaded] = useState(false);
   const [credentialDetailSelection, setCredentialDetailSelection] = useState<CredentialDetailSelection | null>(null);
+  const credentialEditFallbackRef = useRef<HTMLInputElement | null>(null);
+  const [credentialEditSelection, setCredentialEditSelection] = useState<CredentialDetailSelection | null>(null);
   const [credentialDetailOpen, setCredentialDetailOpen] = useState(false);
+  const [credentialPriorityRevision, setCredentialPriorityRevision] = useState(0);
   const credentialDetailRequestRef = useRef<{ id: string; controller: AbortController } | null>(null);
   const [requestLogResponse, setRequestLogResponse] = useState<UsageEventRequestLogResponse | null>(null);
   const [requestLogError, setRequestLogError] = useState('');
@@ -959,8 +953,36 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
     enabledAiProviders: credentialSectionVisibility.showAiProvider && pageVisible,
     onAuthRequired,
     onNotice: showTopNotice,
+    onPrioritySaved: () => setCredentialPriorityRevision((current) => current + 1),
   });
   const refreshCredentials = credentialsData.refresh;
+  const getUsageTabHref = useCallback((tab: UsageTab) => {
+    let search = tab === activeTab ? window.location.search : cpamcEmbedSearch();
+    if (tab === 'auth-files' || tab === 'ai-provider') {
+      search = buildCredentialProviderSearch(search, tab === 'auth-files' ? credentialsData.authFileProviderFilter : credentialsData.aiProviderProviderFilter);
+    } else {
+      search = cpamcEmbedSearch();
+    }
+    return appPath(getUsageTabPath(tab)) + search + (tab === activeTab ? window.location.hash : '');
+  }, [activeTab, credentialsData.authFileProviderFilter, credentialsData.aiProviderProviderFilter]);
+  const activateUsageTab = useCallback((tab: UsageTab) => {
+    window.history.replaceState(null, '', getUsageTabHref(tab));
+    setActiveTab(tab);
+  }, [getUsageTabHref]);
+  const handleUsageTabNavigation = useCallback((event: ReactMouseEvent<HTMLAnchorElement>, tab: UsageTab) => {
+    // 普通左键保持现有无刷新切换；组合键和中键交给原生链接打开新页面。
+    if (!shouldHandleUsageNavigation(event.nativeEvent)) return;
+    event.preventDefault();
+    activateUsageTab(tab);
+  }, [activateUsageTab]);
+  useEffect(() => {
+    if (activeTab !== 'auth-files' && activeTab !== 'ai-provider') return;
+    // 无参数入口也固定本标签页的筛选，避免刷新时再次读取其他标签页改过的默认偏好。
+    const href = getUsageTabHref(activeTab);
+    if (href !== window.location.pathname + window.location.search + window.location.hash) {
+      window.history.replaceState(null, '', href);
+    }
+  }, [activeTab, getUsageTabHref]);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
   const [analysisData, setAnalysisData] = useState<AnalysisResponse | null>(null);
@@ -1630,6 +1652,10 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
   }, [credentialDetailID, credentialDetailOpen, onAuthRequired]);
 
   useEffect(() => {
+    if (credentialPriorityRevision > 0) void refreshCredentialDetail();
+  }, [credentialPriorityRevision, refreshCredentialDetail]);
+
+  useEffect(() => {
     if (!credentialDetailOpen) return;
     // 详情按稳定 ID 独立刷新，凭证因重置移出当前分页后仍能观察新增用量。
     void refreshCredentialDetail();
@@ -1656,10 +1682,10 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
     const id = credentialDetailSelection.row.identity.id;
     if (credentialDetailSelection.kind === 'auth-file') {
       const row = credentialsData.authFileRows.find((item) => item.identity.id === id);
-      return row ? updateCredentialDetailStats({ kind: 'auth-file', row }, credentialDetailSelection.row.identity) : credentialDetailSelection;
+      return row ? updateCredentialDetailStats({ kind: 'auth-file', row }, { ...credentialDetailSelection.row.identity, priority: row.identity.priority }) : credentialDetailSelection;
     }
     const row = credentialsData.aiProviderRows.find((item) => item.identity.id === id);
-    return row ? updateCredentialDetailStats({ kind: 'ai-provider', row }, credentialDetailSelection.row.identity) : credentialDetailSelection;
+    return row ? updateCredentialDetailStats({ kind: 'ai-provider', row }, { ...credentialDetailSelection.row.identity, priority: row.identity.priority }) : credentialDetailSelection;
   }, [credentialDetailSelection, credentialsData.authFileRows, credentialsData.aiProviderRows]);
 
   const handleRequestLogDownload = useCallback(async (eventId: string) => {
@@ -2048,7 +2074,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
                 {tabOptions.map((option) => (
                   <a
                     key={option.value}
-                    href={appPath(getUsageTabPath(option.value)) + cpamcEmbedSearch()}
+                    href={getUsageTabHref(option.value)}
                     role="tab"
                     aria-selected={activeTab === option.value}
                     className={`${styles.tabPill} ${activeTab === option.value ? styles.tabPillActive : ''}`.trim()}
@@ -2122,7 +2148,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
 
             : <DashboardToolbar
               activeId={activeTab}
-              items={tabOptions.map((option) => ({ id: option.value, label: option.label, href: appPath(getUsageTabPath(option.value)) }))}
+              items={tabOptions.map((option) => ({ id: option.value, label: option.label, href: getUsageTabHref(option.value) }))}
               onNavigate={activateUsageTab}
               filters={showApiKeyFilter ? [
                 <Select
@@ -2173,7 +2199,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
                   requestIdentity={activityRequestIdentity}
                   onWindowChange={setActivityWindow}
                 />
-                <UsageComparisonCharts comparisons={overviewComparisons ?? undefined} loading={comparisonsLoading} />
+                <UsageComparisonCharts isDark={resolvedTheme === 'dark'} isMobile={isMobile} comparisons={overviewComparisons ?? undefined} loading={comparisonsLoading} />
               </>
             )}
 
@@ -2277,11 +2303,12 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
                       onRefreshQuota={credentialsData.refreshQuotaForCurrentAuthFilePage}
                       onRefreshQuotaForAuthIndex={credentialsData.refreshQuotaForAuthIndex}
                       onResetQuotaForAuthIndex={credentialsData.resetQuotaForAuthIndex}
-                      aliasSavingId={credentialsData.aliasSavingId}
-                      onSaveAlias={credentialsData.saveUsageIdentityAlias}
+                      editFallbackRef={credentialEditFallbackRef}
+                      onEdit={(row) => setCredentialEditSelection({ kind: 'auth-file', row })}
                       onOpenDetails={(row) => handleCredentialDetailOpen({ kind: 'auth-file', row })}
                       statusPendingIdentityIds={credentialsData.credentialStatusPendingIdentityIds}
                       onToggleStatus={credentialsData.toggleAuthFileStatus}
+                      onSavePriority={credentialsData.saveAuthFilePriority}
                       onRefreshInspectionStatus={credentialsData.refreshQuotaInspectionStatus}
                       onStartInspection={credentialsData.startQuotaInspection}
                       onAfterInvalidAccountAction={credentialsData.refresh}
@@ -2297,8 +2324,8 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
                       activeOnly={credentialsData.aiProviderActiveOnly}
                       sort={credentialsData.aiProviderSort}
                       loading={credentialsData.loading}
-                      aliasSavingId={credentialsData.aliasSavingId}
-                      onSaveAlias={credentialsData.saveUsageIdentityAlias}
+                      editFallbackRef={credentialEditFallbackRef}
+                      onEdit={(row) => setCredentialEditSelection({ kind: 'ai-provider', row })}
                       onOpenDetails={(row) => handleCredentialDetailOpen({ kind: 'ai-provider', row })}
                       statusPendingIdentityIds={credentialsData.credentialStatusPendingIdentityIds}
                       onToggleStatus={credentialsData.toggleAiProviderStatus}
@@ -2346,6 +2373,17 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
           </div>
         </main>
       </div>
+      {credentialEditSelection && <CredentialEditModal
+        key={`${credentialEditSelection.kind}:${credentialEditSelection.row.identity.id}`}
+        selection={credentialEditSelection}
+        fallbackFocusRef={credentialEditFallbackRef}
+        onClose={() => setCredentialEditSelection(null)}
+        onSaveField={(change) => credentialsData.saveCredentialField(credentialEditSelection.kind, credentialEditSelection.row.identity.id, credentialEditSelection.row.identity.identity, change)}
+        onSaved={() => {
+          setCredentialEditSelection(null);
+          showTopNotice('success', t('usage_stats.credentials_edit_saved'));
+        }}
+      />}
       <CredentialDetailDrawer
         open={credentialDetailOpen}
         selection={currentCredentialDetailSelection}

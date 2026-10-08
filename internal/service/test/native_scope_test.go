@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -66,5 +67,45 @@ func TestErrorEventsKeepOnlyNativeProviders(t *testing.T) {
 	}
 	if len(rows) != 2 || rows[0].Provider != "codex" || rows[1].Provider != "claude" {
 		t.Fatalf("error event provider scope: %+v", rows)
+	}
+}
+
+func TestUsageHeaderSnapshotNativeProviderFallback(t *testing.T) {
+	now := time.Now()
+	for _, tc := range []struct{ name, provider, executor, model, want string }{
+		{"codex_executor", "", "CodexExecutor", "custom-model", "codex"},
+		{"codex_websockets", "", "CodexWebsocketsExecutor", "custom-model", "codex"},
+		{"codex_auto", "", "CodexAutoExecutor", "custom-model", "codex"},
+		{"claude_executor", "", "ClaudeExecutor", "custom-model", "claude"},
+		{"explicit_native", " CLAUDE ", "CodexExecutor", "gpt-test", "claude"},
+		{"explicit_foreign", "openai", "CodexExecutor", "gpt-test", ""},
+		{"foreign_claude_model", "antigravity", "ClaudeExecutor", "claude-test", ""},
+		{"missing_identity_source", "", "", "claude-test", ""},
+		{"compat_executor", "", "OpenAICompatExecutor", "gpt-test", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, err := json.Marshal(map[string]any{
+				"request_id": "native-header-" + tc.name, "auth_index": "native-account", "auth_type": "oauth",
+				"provider": tc.provider, "executor_type": tc.executor, "model": tc.model,
+				"response_headers": map[string]string{
+					"X-Codex-Primary-Used-Percent": "5", "X-Codex-Primary-Window-Minutes": "300", "X-Codex-Primary-Reset-After-Seconds": "60",
+					"anthropic-ratelimit-unified-5h-utilization": "0.25", "anthropic-ratelimit-unified-5h-reset": fmt.Sprint(now.Add(time.Hour).Unix()),
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _, snapshot, err := service.DecodeRedisUsageMessageWithHeaders(string(payload), now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == "" {
+				if snapshot != nil {
+					t.Fatalf("non-native source produced snapshot: %+v", snapshot)
+				}
+			} else if snapshot == nil || snapshot.Provider != tc.want || len(snapshot.MainQuotaObservations) != 1 {
+				t.Fatalf("snapshot=%+v, want provider %s with one quota observation", snapshot, tc.want)
+			}
+		})
 	}
 }

@@ -11,7 +11,7 @@ func TestDefaultProviderConfigsContainsOnlyNativeAPICallTemplates(t *testing.T) 
 	if len(templates) != 3 {
 		t.Fatalf("expected three native templates, got %d", len(templates))
 	}
-	expected := []string{"https://chatgpt.com/backend-api/wham/usage", "https://api.anthropic.com/api/oauth/usage", "https://api.anthropic.com/api/oauth/profile"}
+	expected := []string{"https://chatgpt.com/backend-api/wham/usage", "https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1", "https://api.anthropic.com/api/oauth/profile"}
 	for i, template := range templates {
 		if template.Method != "GET" || template.URL != expected[i] || template.Headers["Authorization"] != "Bearer $TOKEN$" {
 			t.Fatalf("unexpected template: %+v", template)

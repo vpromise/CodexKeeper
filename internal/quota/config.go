@@ -23,6 +23,8 @@ const (
 
 	// CodexRateLimitResetCreditsURL 返回当前账号每次可用 reset credit 及其过期时间。
 	CodexRateLimitResetCreditsURL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
+
+	CodexSubscriptionsURL = "https://chatgpt.com/backend-api/subscriptions"
 )
 
 // RefreshCacheableHTTPStatusCodes 定义会写入页面恢复缓存并被自动刷新跳过的 provider HTTP 状态码。
@@ -51,16 +53,17 @@ func DefaultProviderConfigs() ProviderConfigs {
 			Headers: map[string]string{
 				"Authorization": "Bearer $TOKEN$",
 				"Content-Type":  "application/json",
-				"User-Agent":    "codex_cli_rs/0.76.0 (Debian 13.0.0; x86_64) WindowsTerminal",
+				"User-Agent":    "Codex Desktop/0.160.1 (Mac OS 27.0.1; arm64) unknown (Codex Desktop; 26.930.61225)",
 			},
 		},
 		ClaudeUsage: APICallConfig{
 			Method: "GET",
-			URL:    "https://api.anthropic.com/api/oauth/usage",
+			URL:    "https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1",
 			Headers: map[string]string{
 				"Authorization":  "Bearer $TOKEN$",
 				"Content-Type":   "application/json",
 				"anthropic-beta": "oauth-2025-04-20",
+				"User-Agent":     "claude-cli/2.1.280 (external, cli)",
 			},
 		},
 		ClaudeProfile: APICallConfig{
@@ -70,6 +73,7 @@ func DefaultProviderConfigs() ProviderConfigs {
 				"Authorization":  "Bearer $TOKEN$",
 				"Content-Type":   "application/json",
 				"anthropic-beta": "oauth-2025-04-20",
+				"User-Agent":     "claude-cli/2.1.280 (external, cli)",
 			},
 		},
 	}

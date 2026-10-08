@@ -49,14 +49,15 @@ type StatusRouteConfig struct {
 }
 
 type OptionalProviders struct {
-	UsageIdentity    service.UsageIdentityProvider
-	ErrorEvents      service.ErrorEventProvider
-	Quota            QuotaProvider
-	CPAAPIKeys       service.CPAAPIKeyProvider
-	AuthFiles        service.AuthFilesManagementProvider
-	CredentialStatus service.CredentialStatusProvider
-	RequestLogs      service.RequestLogProvider
-	Status           StatusRouteConfig
+	UsageIdentity      service.UsageIdentityProvider
+	ErrorEvents        service.ErrorEventProvider
+	Quota              QuotaProvider
+	CPAAPIKeys         service.CPAAPIKeyProvider
+	AuthFiles          service.AuthFilesManagementProvider
+	CredentialStatus   service.CredentialStatusProvider
+	RequestLogs        service.RequestLogProvider
+	Status             StatusRouteConfig
+	CredentialPriority service.CredentialPriorityProvider
 }
 
 func NewRouter(
@@ -98,6 +99,7 @@ func NewRouter(
 	var cpaAPIKeyProvider service.CPAAPIKeyProvider
 	var authFilesProvider service.AuthFilesManagementProvider
 	var credentialStatusProvider service.CredentialStatusProvider
+	var credentialPriorityProvider service.CredentialPriorityProvider
 	var requestLogProvider service.RequestLogProvider
 	var statusConfig StatusRouteConfig
 	if len(optionalProviders) > 0 {
@@ -107,6 +109,7 @@ func NewRouter(
 		cpaAPIKeyProvider = optionalProviders[0].CPAAPIKeys
 		authFilesProvider = optionalProviders[0].AuthFiles
 		credentialStatusProvider = optionalProviders[0].CredentialStatus
+		credentialPriorityProvider = optionalProviders[0].CredentialPriority
 		requestLogProvider = optionalProviders[0].RequestLogs
 		statusConfig = optionalProviders[0].Status
 	}
@@ -130,6 +133,7 @@ func NewRouter(
 	registerErrorEventRoutes(adminProtected, errorEventProvider)
 	registerAuthFileManagementRoutes(adminProtected, authFilesProvider)
 	registerCredentialStatusRoutes(adminProtected, credentialStatusProvider)
+	registerCredentialPriorityRoutes(adminProtected, credentialPriorityProvider)
 	registerAuthSessionManagementRoutes(adminProtected, authHandler)
 	registerCPAAPIKeyRoutes(adminProtected, cpaAPIKeyProvider)
 	registerPricingRoutes(adminProtected, pricingProvider)

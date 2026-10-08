@@ -6,8 +6,10 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"cpa-usage-keeper/internal/cpa/dto/apicall"
+	"cpa-usage-keeper/internal/timeutil"
 )
 
 func parseCodexUsagePayload(response *apicall.Response) (*CodexUsagePayload, error) {
@@ -33,6 +35,31 @@ func parseCodexUsagePayload(response *apicall.Response) (*CodexUsagePayload, err
 		})
 	}
 	return payload, nil
+}
+
+func parseCodexSubscriptionActiveUntil(response *apicall.Response) *time.Time {
+	object, err := parseResponseObject(response)
+	if err != nil {
+		return nil
+	}
+	value := stringField(object, "active_until", "activeUntil")
+	if value == "" || value == "0" {
+		return nil
+	}
+	if parsed, err := timeutil.ParseStorageTime(value); err == nil && !parsed.IsZero() {
+		return &parsed
+	}
+	// 官方兼容数字 Unix 时间；毫秒值可由位数区分，零和无效值均不写入。
+	if number, err := strconv.ParseInt(value, 10, 64); err == nil && number > 0 {
+		var parsed time.Time
+		if number >= 100_000_000_000 {
+			parsed = time.UnixMilli(number)
+		} else {
+			parsed = time.Unix(number, 0)
+		}
+		return &parsed
+	}
+	return nil
 }
 
 func parseCodexRateLimitResetCredits(object map[string]json.RawMessage) *CodexRateLimitResetCredits {
@@ -90,6 +117,7 @@ func parseClaudeUsagePayload(response *apicall.Response) (*ClaudeUsagePayload, e
 		return nil, err
 	}
 	return &ClaudeUsagePayload{
+		ResetGrants:       parseClaudeResetGrants(object["cedar_ember"]),
 		FiveHour:          parseClaudeUsageWindow(objectField(object, "five_hour", "fiveHour")),
 		SevenDay:          parseClaudeUsageWindow(objectField(object, "seven_day", "sevenDay")),
 		SevenDayOAuthApps: parseClaudeUsageWindow(objectField(object, "seven_day_oauth_apps", "sevenDayOauthApps")),
@@ -105,9 +133,11 @@ func parseClaudeUsageWindow(object map[string]json.RawMessage) *ClaudeUsageWindo
 	if object == nil {
 		return nil
 	}
+	utilization, hasUtilization := floatValue(object, "utilization")
 	return &ClaudeUsageWindow{
-		Utilization: floatField(object, "utilization"),
-		ResetsAt:    stringField(object, "resets_at", "resetsAt"),
+		Utilization:    utilization,
+		ResetsAt:       stringField(object, "resets_at", "resetsAt"),
+		HasUtilization: hasUtilization && !math.IsNaN(utilization) && !math.IsInf(utilization, 0),
 	}
 }
 

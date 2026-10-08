@@ -10,6 +10,7 @@ const (
 	cpaManagementResetQuotaEndpoint      = "/v0/management/reset-quota"
 	cpaManagementRequestLogByIDEndpoint  = "/v0/management/request-log-by-id"
 	cpaModelsEndpoint                    = "/v1/models"
+	cpaManagementAuthFilesFieldsEndpoint = "/v0/management/auth-files/fields"
 
 	cpaManagementRedisNetwork       = "tcp"
 	ManagementRedisDefaultPort      = "8317"

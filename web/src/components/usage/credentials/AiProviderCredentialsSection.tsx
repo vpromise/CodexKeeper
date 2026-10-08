@@ -1,10 +1,11 @@
+import type { Ref } from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './CredentialSections.module.scss'
 import { formatCredentialTimestamp, type AiProviderCredentialRow } from './credentialViewModels'
 import type { UsageIdentityPageSort } from '@/lib/api'
-import { CredentialAliasEditor, isCredentialAliasEditorDisabled } from './CredentialAliasEditor'
+import { CredentialAliasEditor } from './CredentialAliasEditor'
 import { CredentialHealthPanel } from './CredentialHealthPanel'
-import { CredentialPriorityBadge, CredentialRowShell, CredentialSectionShell, CredentialTableHeader, CredentialsPagination, MetricPill, RequestMetric, TonePercent, cacheReadRateTone, formatCredentialNumber, successRateTone } from './CredentialSectionShell'
+import { CredentialRowShell, CredentialSectionShell, CredentialTableHeader, CredentialsPagination, MetricPill, RequestMetric, TonePercent, cacheReadRateTone, formatCredentialNumber, successRateTone } from './CredentialSectionShell'
 import { CredentialStatusToggle, CredentialStatusUnsupportedIcon, isCredentialStatusToggleSupported } from './CredentialStatusToggle'
 import { QuestionMarkHelp } from '@/components/ui/QuestionMarkHelp'
 
@@ -17,8 +18,9 @@ interface AiProviderCredentialsSectionProps {
   activeOnly: boolean
   sort: UsageIdentityPageSort
   loading: boolean
-  aliasSavingId?: string
-  onSaveAlias?: (id: string, alias: string) => Promise<void>
+  /** 编辑行消失时，焦点留在当前列表的原生筛选控件，不改变页面容器。 */
+  editFallbackRef?: Ref<HTMLInputElement>
+  onEdit?: (row: AiProviderCredentialRow) => void
   onOpenDetails?: (row: AiProviderCredentialRow) => void
   /** 正在写入上游状态的 Keeper identity id 集合，用于阻止重复点击。 */
   statusPendingIdentityIds?: ReadonlySet<string>
@@ -29,7 +31,7 @@ interface AiProviderCredentialsSectionProps {
   onSortChange: (sort: UsageIdentityPageSort) => void
 }
 
-export function AiProviderCredentialsSection({ rows, total, page, totalPages, pageSize, activeOnly, sort, loading, aliasSavingId, onSaveAlias, onOpenDetails, statusPendingIdentityIds, onToggleStatus, onPageChange, onPageSizeChange, onActiveOnlyChange, onSortChange }: AiProviderCredentialsSectionProps) {
+export function AiProviderCredentialsSection({ rows, total, page, totalPages, pageSize, activeOnly, sort, loading, editFallbackRef, onEdit, onOpenDetails, statusPendingIdentityIds, onToggleStatus, onPageChange, onPageSizeChange, onActiveOnlyChange, onSortChange }: AiProviderCredentialsSectionProps) {
   const { t } = useTranslation()
   const helpText = t('usage_stats.credentials_ai_providers_active_only_help')
 
@@ -42,7 +44,7 @@ export function AiProviderCredentialsSection({ rows, total, page, totalPages, pa
         <div className={styles.credentialAuthFileTitleControls}>
           <label className={styles.credentialActiveOnlySwitch}>
             <span className={styles.credentialActiveOnlyLabel}>{t('usage_stats.credentials_ai_providers_active_only')}</span>
-            <input type="checkbox" checked={activeOnly} onChange={(event) => onActiveOnlyChange(event.target.checked)} />
+            <input ref={editFallbackRef} type="checkbox" checked={activeOnly} onChange={(event) => onActiveOnlyChange(event.target.checked)} />
             <span className={styles.credentialActiveOnlyTrack} aria-hidden="true">
               <span className={styles.credentialActiveOnlyThumb} />
             </span>
@@ -89,18 +91,17 @@ export function AiProviderCredentialsSection({ rows, total, page, totalPages, pa
               onToggle={(disabled) => onToggleStatus?.(row.identity.id || row.identity.identity, row.identity.identity, disabled)}
             />
           ) : (
-            // OpenAI 兼容类供应商没有对应的整条停用语义，静态图标复用同一套行内提示。
+            // 不支持的历史凭据只展示静态图标和说明。
             <CredentialStatusUnsupportedIcon displayName={row.displayName} providerType={row.identity.type} />
           )}
-          title={onSaveAlias ? (
+          title={onEdit ? (
             <CredentialAliasEditor
               identityId={row.identity.id}
               displayName={row.displayName}
-              alias={row.identity.alias}
-              saving={aliasSavingId === row.identity.id}
-              disabled={isCredentialAliasEditorDisabled(row.identity.id, row.identity.is_deleted, aliasSavingId)}
+
+              disabled={row.identity.is_deleted}
               onOpenDetails={onOpenDetails ? () => onOpenDetails(row) : undefined}
-              onSaveAlias={onSaveAlias}
+              onEdit={() => onEdit(row)}
             />
           ) : onOpenDetails ? (
             <button
@@ -113,11 +114,7 @@ export function AiProviderCredentialsSection({ rows, total, page, totalPages, pa
               <span className={styles.credentialDetailNameArrow} aria-hidden="true">‹</span>
             </button>
           ) : row.displayName}
-          subtitle={row.priorityLabel ? (
-            <span className={styles.credentialIdentityBadges}>
-              <CredentialPriorityBadge>{row.priorityLabel}</CredentialPriorityBadge>
-            </span>
-          ) : undefined}
+          subtitle={row.priorityLabel ? <span className={styles.credentialPriorityBadge}>{row.priorityLabel}</span> : undefined}
           badges={null}
           metricsTitle={row.identity.stats_reset_at ? t('usage_stats.credentials_stats_since', { time: formatCredentialTimestamp(row.identity.stats_reset_at) ?? row.identity.stats_reset_at }) : undefined}
           metrics={(

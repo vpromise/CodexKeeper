@@ -11,7 +11,7 @@ The original dashboard design, charts, light/dark themes and responsive layout a
 - Overview, realtime monitoring, analysis, request details and exports.
 - Tokens, cache usage, latency, failures and estimated costs.
 - Codex / Claude OAuth accounts and native API key credentials, with names and aliases.
-- Native quota and subscription information, Codex quota history.
+- Native quota and subscription information, Codex / Claude quota history.
 - One administrator password, session management, SQLite storage and backups.
 
 Removed: community/local leaderboards, ranking submission and profiles, API Key user
@@ -53,6 +53,10 @@ A normal HTTP reverse proxy does not forward the RESP stream: keep
 
 To use the same administrator password as CodexProxy without storing its plaintext, leave `LOGIN_PASSWORD` empty and set `LOGIN_PASSWORD_HASH` to its bcrypt `remote-management.secret-key`. Single-quote the hash in `.env` to preserve `$` characters. Configure exactly one password option. This copies the current password hash; later CPA password changes must be applied to Keeper separately.
 
+Administrators can view and download existing CPA request logs by setting
+`CPA_REQUEST_LOG_ACCESS_ENABLED=true` (default `false`). CPA must retain the
+corresponding logs; they may include request and response content.
+
 ## Collection and reliability
 
 Keeper subscribes to `usage`, drains the fixed `usage` backlog with `LPOP`, and
@@ -62,6 +66,20 @@ inbox before aggregation; consumed batches are retried on database write failure
 The upstream stream has no durable acknowledgement: a process crash between
 receiving an event and writing it can still lose that event. Error events are
 live-only and have no backlog. Keep the collector running.
+
+## Selective upstream sync
+
+Integrated the relevant changes through upstream [v1.15.10 (`b3592bff`)](https://github.com/Willxup/cpa-usage-keeper/commit/b3592bff1e342c246d1324bcd99ba9b77232f315), retaining the Codex / Claude scope:
+
+- Claude response-header quota updates and 5-hour / 7-day history, including partial-window merging and Max 5x / 20x subscription labels. History accumulates from new observations; earlier periods are not reconstructed.
+- Codex subscription expiry lookup and updated Codex / Claude request headers.
+- Claude quota reset grants, when offered by the upstream account, with explicit selection and confirmation before use.
+- Unified credential editing, focus restoration and provider-filter links. Priority editing is available only for native authentication files; API key credentials retain alias and status editing because the current CodexProxy API does not support priority writes.
+- Stacked token charts, token-share ribbons and realtime latency scatter, plus lower-overhead metadata sync and latency aggregation.
+
+Existing databases receive a backed-up migration that reduces stored latency scatter samples from at most 2,500 to 1,000 per bucket. Counts, maximums and percentile sketches are preserved. The realtime API now returns latency scatter data in place of the old response distribution; update external consumers together with Keeper.
+
+`USAGE_RAW_RETENTION_DAYS=0` keeps archived request details indefinitely. Values of 90 or more enable expiry of archive rows by request time; the hot table retains 90 local calendar days. Aggregated history and backup retention are independent. Deleted details cannot be used for later recalculation. Invalid values below 90 fall back to permanent retention with a warning.
 
 ## Develop and verify
 

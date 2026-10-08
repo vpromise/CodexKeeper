@@ -36,7 +36,7 @@ describe('unsupported credential status icon', () => {
     // 说明节点常驻 DOM，聚焦当刻就能作为可访问描述被计算，而不是聚焦后才插入。
     const tooltip = container.querySelector('[data-credential-status-tooltip="true"]')
     expect(tooltip?.getAttribute('role')).toBe('tooltip')
-    expect(tooltip?.textContent).toBe('OpenAI-compatible credentials cannot be enabled or disabled here.')
+    expect(tooltip?.textContent).toBe('This credential type cannot be enabled or disabled here.')
     expect(target?.getAttribute('aria-describedby')).toBe(tooltip?.id)
 
     await act(async () => target?.focus())
