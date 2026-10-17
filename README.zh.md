@@ -43,13 +43,19 @@ docker compose --project-directory . -f deploy/docker-compose.example.yml up -d 
 
 ## 选择性同步上游
 
-已适配上游截至 [v1.15.10（`b3592bff`）](https://github.com/Willxup/cpa-usage-keeper/commit/b3592bff1e342c246d1324bcd99ba9b77232f315) 的相关更新，继续仅支持 Codex／Claude：
+已选择性适配上游截至 [v1.15.11（`71a41cc2`）](https://github.com/Willxup/cpa-usage-keeper/commit/71a41cc2d1cce8d75b42473adf31f2616ad8085e) 的相关更新，继续仅支持 Codex／Claude；延期与排除项见[同步台账](docs/upstream-sync.md)：
+
+- 额度刷新失败会替换旧的成功快照，延迟返回的缓存不会覆盖更新的手动刷新结果。
+- 请求详情根据已有元数据标记流式响应；缺失时保留“未知”，并可通过可聚焦提示查看完整端点。User-Agent 支持复制完整值，不受页面截断影响。
+- 原生 Codex 消息仅提供总 Token 时，保留上报总量，不补造输入／输出分类，也不按未知分类估算费用。只影响新接收记录，不回填历史。
 
 - Claude 响应头额度更新、5 小时／7 天额度历史、部分窗口合并修复，以及 Max 5x／20x 订阅标识。历史从新观察数据开始积累，不补算此前的额度记录。
 - Codex 订阅到期查询及 Codex／Claude 请求头更新。
 - 上游账号提供可用额度重置券时，支持 Claude 重置；必须在界面选择并确认后才会使用。
 - 凭据统一编辑、焦点恢复和供应商筛选直达链接。优先级仅支持原生认证文件；当前 CodexProxy 不支持 API Key 优先级写入，其编辑框保留别名与启停。
 - Token 堆叠图、占比色带、实时延迟散点图，以及元数据差异同步和延迟聚合优化。
+
+当前用量分布图布局保持不变。执行／会话节点元数据存储等待支持的 CodexProxy 输出对应字段后再评估；采集继续兼容当前以 request ID 标识的消息。
 
 已有数据库首次升级会先备份，再将每桶延迟散点样本上限从 2500 缩为 1000；总计数、最大值和分位数统计结构保留。实时 API 用延迟散点数据替换原响应分布字段，外部调用方需要随 Keeper 一起适配。
 

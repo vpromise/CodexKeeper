@@ -27,26 +27,22 @@ describe('buildQuotaCacheAuthIndexesKey', () => {
 })
 
 describe('Credentials quota inspection cache refresh', () => {
-  it('lets completed cache quota clear stale row refresh failures after inspection', () => {
+  it('keeps the current refresh failure visible', () => {
     const states = buildCredentialQuotaStateMap(
-      {},
       { 'auth-1': { refreshStatus: 'failed', error: 'HTTP 401: stale failure' } },
-      { 'auth-1': { id: 'auth-1', quota: [{ key: 'rate_limit.primary_window', label: '5h' }] } },
     )
 
     expect(states.get('auth-1')).toEqual({
       quotaLoading: false,
-      quotaError: undefined,
-      refreshStatus: undefined,
+      quotaError: 'HTTP 401: stale failure',
+      refreshStatus: 'failed',
       quotaResetting: false,
     })
   })
 
   it('keeps reset loading separate from quota panel errors', () => {
     const states = buildCredentialQuotaStateMap(
-      {},
       { 'auth-1': { error: 'refresh failed' } },
-      {},
       { 'auth-1': { quotaResetting: true } },
     )
 
@@ -60,8 +56,6 @@ describe('Credentials quota inspection cache refresh', () => {
 
   it('keeps reset loading separate from quota panel loading', () => {
     const states = buildCredentialQuotaStateMap(
-      {},
-      {},
       {},
       { 'auth-1': { quotaResetting: true } },
     )

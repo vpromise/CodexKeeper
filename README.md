@@ -69,13 +69,19 @@ live-only and have no backlog. Keep the collector running.
 
 ## Selective upstream sync
 
-Integrated the relevant changes through upstream [v1.15.10 (`b3592bff`)](https://github.com/Willxup/cpa-usage-keeper/commit/b3592bff1e342c246d1324bcd99ba9b77232f315), retaining the Codex / Claude scope:
+Selectively adapted relevant changes through upstream [v1.15.11 (`71a41cc2`)](https://github.com/Willxup/cpa-usage-keeper/commit/71a41cc2d1cce8d75b42473adf31f2616ad8085e), retaining the Codex / Claude scope. Deferred and excluded items are recorded in [the sync ledger](docs/upstream-sync.md):
+
+- Quota refresh failures replace older successful snapshots; delayed cache reads cannot overwrite newer manual results.
+- Request details show stream metadata when available, preserve unknown mode when absent, and expose complete endpoints in accessible tooltips. User-Agent values can be copied without truncation.
+- Total-only native Codex usage retains its reported total without inventing input/output tokens or charging for an unknown breakdown. This applies to newly ingested events; historical records are not backfilled.
 
 - Claude response-header quota updates and 5-hour / 7-day history, including partial-window merging and Max 5x / 20x subscription labels. History accumulates from new observations; earlier periods are not reconstructed.
 - Codex subscription expiry lookup and updated Codex / Claude request headers.
 - Claude quota reset grants, when offered by the upstream account, with explicit selection and confirmation before use.
 - Unified credential editing, focus restoration and provider-filter links. Priority editing is available only for native authentication files; API key credentials retain alias and status editing because the current CodexProxy API does not support priority writes.
 - Stacked token charts, token-share ribbons and realtime latency scatter, plus lower-overhead metadata sync and latency aggregation.
+
+The current Usage Distribution layout remains unchanged. Execution/session-node metadata storage is deferred until the supported CodexProxy provides those fields; collection continues to accept its current request-ID payloads.
 
 Existing databases receive a backed-up migration that reduces stored latency scatter samples from at most 2,500 to 1,000 per bucket. Counts, maximums and percentile sketches are preserved. The realtime API now returns latency scatter data in place of the old response distribution; update external consumers together with Keeper.
 
