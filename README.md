@@ -83,6 +83,13 @@ Selectively adapted relevant changes through upstream [v1.15.11 (`71a41cc2`)](ht
 
 The current Usage Distribution layout remains unchanged. Execution/session-node metadata storage is deferred until the supported CodexProxy provides those fields; collection continues to accept its current request-ID payloads.
 
+The v2.0.0 and v2.0.1 releases have also been reviewed. Two independent fixes are
+backported: deferred modal focus no longer overrides a field already focused by
+validation, and UTC fractional-second events on the 90-day cutoff stay in the hot
+table. This is not a v2 upgrade: persisted pricing, historical rebuilds, CPA v8
+management, OIDC, renamed routes and new chart interactions are not adopted.
+See the ledger for the individual decisions and validation limits.
+
 Existing databases receive a backed-up migration that reduces stored latency scatter samples from at most 2,500 to 1,000 per bucket. Counts, maximums and percentile sketches are preserved. The realtime API now returns latency scatter data in place of the old response distribution; update external consumers together with Keeper.
 
 `USAGE_RAW_RETENTION_DAYS=0` keeps archived request details indefinitely. Values of 90 or more enable expiry of archive rows by request time; the hot table retains 90 local calendar days. Aggregated history and backup retention are independent. Deleted details cannot be used for later recalculation. Invalid values below 90 fall back to permanent retention with a warning.
