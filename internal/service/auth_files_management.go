@@ -29,12 +29,18 @@ type AuthFilesManagementResponse struct {
 }
 
 type authFilesManagementService struct {
-	client AuthFilesManagementClient
-	locks  *CredentialMutationLocks
+	client   AuthFilesManagementClient
+	locks    *CredentialMutationLocks
+	metadata *CredentialMetadataCoordinator
+	refresh  MetadataRefresher
 }
 
 func NewAuthFilesManagementService(client AuthFilesManagementClient, locks *CredentialMutationLocks) AuthFilesManagementProvider {
-	return &authFilesManagementService{client: client, locks: locks}
+	return NewAuthFilesManagementServiceWithMetadata(client, nil, locks, nil)
+}
+
+func NewAuthFilesManagementServiceWithMetadata(client AuthFilesManagementClient, refresh MetadataRefresher, locks *CredentialMutationLocks, metadata *CredentialMetadataCoordinator) AuthFilesManagementProvider {
+	return &authFilesManagementService{client: client, refresh: refresh, locks: locks, metadata: metadata}
 }
 
 func (s *authFilesManagementService) SetAuthFilesDisabled(ctx context.Context, names []string, disabled bool) (AuthFilesManagementResponse, error) {
@@ -50,6 +56,7 @@ func (s *authFilesManagementService) SetAuthFilesDisabled(ctx context.Context, n
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var updateErr error
+	var anySucceeded bool
 	// CPA 的 status 接口一次只接收一个账号；这里在服务端批量 fan-out，并限制并发避免压垮上游。
 	for _, name := range cleanNames {
 		name := name
@@ -71,10 +78,19 @@ func (s *authFilesManagementService) SetAuthFilesDisabled(ctx context.Context, n
 				mu.Lock()
 				updateErr = joinAuthFilesManagementError(updateErr, fmt.Errorf("%s: %w", name, err))
 				mu.Unlock()
+				return
 			}
+			// 每项远端成功立即使旧快照失效，包括整批最终部分失败的情况。
+			s.metadata.completeMutation(nil)
+			mu.Lock()
+			anySucceeded = true
+			mu.Unlock()
 		}()
 	}
 	wg.Wait()
+	if anySucceeded && s.refresh != nil {
+		s.refresh.RequestLocalMetadataRefresh()
+	}
 	if updateErr != nil {
 		return AuthFilesManagementResponse{}, updateErr
 	}
@@ -91,6 +107,11 @@ func (s *authFilesManagementService) DeleteAuthFiles(ctx context.Context, names 
 	}
 	if err := s.client.DeleteAuthFiles(ctx, cleanNames); err != nil {
 		return AuthFilesManagementResponse{}, err
+	}
+	// 207 部分删除同样可能已改变上游，成功响应后失效旧快照并重新读取。
+	s.metadata.completeMutation(nil)
+	if s.refresh != nil {
+		s.refresh.RequestLocalMetadataRefresh()
 	}
 	return AuthFilesManagementResponse{Names: cleanNames, Affected: len(cleanNames)}, nil
 }

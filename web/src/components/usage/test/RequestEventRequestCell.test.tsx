@@ -74,7 +74,7 @@ describe.each(['log', 'credential'] as const)('Request tooltip in %s', (surface)
     await render([{ ...event, endpoint: `POST ${path}`, stream: true }])
     const cell = requestCell()
     expect(cell.textContent).not.toContain('POST ')
-    expect(cell.textContent).not.toContain('/v1/')
+    expect(cell.textContent).toContain('/v1/')
     expect(cell.querySelector('[title]')).toBeNull()
     expect(cell.tabIndex).toBe(0)
     await act(async () => cell.focus())
@@ -87,6 +87,22 @@ describe.each(['log', 'credential'] as const)('Request tooltip in %s', (surface)
     await act(async () => cell.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await render([])
     expect(document.body.querySelector('[role="tooltip"]')).toBeNull()
+  })
+
+  it.each([
+    ['/backend-api/codex/responses', '/v1/responses'],
+    ['/backend-api/codex/responses/compact', '/v1/responses/compact'],
+    ['/backend-api/codex/alpha/search', '/v1/alpha/search'],
+    ['/v1/messages', '/v1/messages'],
+    ['/v1/responses/custom', '/v1/responses/custom'],
+  ])('displays %s consistently while retaining its raw tooltip', async (raw, display) => {
+    await render([{ ...event, endpoint: `POST ${raw}` }])
+    const cell = Array.from(container.querySelectorAll<HTMLTableCellElement>('tbody td'))
+      .find((el) => el.getAttribute('aria-label')?.includes('Endpoint:'))!
+    expect(cell.textContent).toContain(display)
+    await act(async () => cell.focus())
+    expect(tooltipLines()).toContain(`Endpoint: POST ${raw}`)
+    expect(tooltipLines()).toContain('Response mode: Unknown')
   })
 
   it('keeps a missing endpoint and stream state unknown', async () => {

@@ -57,6 +57,7 @@ type SyncService struct {
 	db                    *gorm.DB
 	client                CPAClientFetcher
 	metadataFetcher       MetadataFetcher
+	credentialMetadata    *CredentialMetadataCoordinator
 	baseURL               string
 	now                   func() time.Time
 	recentUsage           RecentUsageEventAppender
@@ -81,8 +82,10 @@ type SyncServiceOptions struct {
 	BaseURL               string
 	Client                CPAClientFetcher
 	MetadataFetcher       MetadataFetcher
-	Now                   func() time.Time
-	RecentUsageEvents     RecentUsageEventAppender
+	// CredentialMetadata 与凭据写服务共享，只协调本地短事务。
+	CredentialMetadata *CredentialMetadataCoordinator
+	Now                func() time.Time
+	RecentUsageEvents  RecentUsageEventAppender
 	// UsageAggregationNotifier 注入 App 唯一的单 writer runner。
 	UsageAggregationNotifier UsageAggregationNotifier
 	// UsageHeaderQuota 独立接收原始 Header；是否配置聚合 notifier 不影响它。
@@ -104,6 +107,7 @@ func NewSyncServiceWithOptions(db *gorm.DB, opts SyncServiceOptions) *SyncServic
 		usageRawRetentionDays: opts.UsageRawRetentionDays,
 		client:                opts.Client,
 		metadataFetcher:       metadataFetcher,
+		credentialMetadata:    opts.CredentialMetadata,
 		baseURL:               strings.TrimSpace(opts.BaseURL),
 		now:                   now,
 		recentUsage:           opts.RecentUsageEvents,

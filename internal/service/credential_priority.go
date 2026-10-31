@@ -35,14 +35,19 @@ type CredentialPriorityResponse struct {
 }
 
 type credentialPriorityService struct {
-	db      *gorm.DB
-	client  CredentialPriorityClient
-	refresh MetadataRefresher
-	locks   *CredentialMutationLocks
+	db       *gorm.DB
+	client   CredentialPriorityClient
+	refresh  MetadataRefresher
+	locks    *CredentialMutationLocks
+	metadata *CredentialMetadataCoordinator
 }
 
 func NewCredentialPriorityService(db *gorm.DB, client CredentialPriorityClient, refresh MetadataRefresher, locks *CredentialMutationLocks) CredentialPriorityProvider {
-	return &credentialPriorityService{db: db, client: client, refresh: refresh, locks: locks}
+	return NewCredentialPriorityServiceWithMetadata(db, client, refresh, locks, nil)
+}
+
+func NewCredentialPriorityServiceWithMetadata(db *gorm.DB, client CredentialPriorityClient, refresh MetadataRefresher, locks *CredentialMutationLocks, metadata *CredentialMetadataCoordinator) CredentialPriorityProvider {
+	return &credentialPriorityService{db: db, client: client, refresh: refresh, locks: locks, metadata: metadata}
 }
 
 func (s *credentialPriorityService) SetAuthFilePriority(ctx context.Context, authIndex string, priority int) (CredentialPriorityResponse, error) {
@@ -72,7 +77,9 @@ func (s *credentialPriorityService) SetAuthFilePriority(ctx context.Context, aut
 		return CredentialPriorityResponse{}, priorityWriteError(statusCode, err)
 	}
 	defer s.requestRefresh()
-	if err := repository.UpdateUsageIdentityPriority(ctx, s.db, entities.UsageIdentityAuthTypeAuthFile, authIndex, priority); err != nil {
+	if err := s.metadata.completeMutation(func() error {
+		return repository.UpdateUsageIdentityPriority(ctx, s.db, entities.UsageIdentityAuthTypeAuthFile, authIndex, priority)
+	}); err != nil {
 		return CredentialPriorityResponse{}, fmt.Errorf("persist auth file priority: %w", err)
 	}
 	return CredentialPriorityResponse{AuthIndex: authIndex, Priority: priority}, nil

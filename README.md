@@ -90,6 +90,13 @@ table. This is not a v2 upgrade: persisted pricing, historical rebuilds, CPA v8
 management, OIDC, renamed routes and new chart interactions are not adopted.
 See the ledger for the individual decisions and validation limits.
 
+Further selective fixes from v2.0.2 preserve explicit Codex header limit-state
+recovery without accepting older flags over newer refreshes, prevent stale
+metadata snapshots from undoing successful credential mutations, and share
+exact request-endpoint display aliases between both request lists. Raw endpoints
+and exports stay unchanged. v2.0.3 has been reviewed without adopting its optional
+layout changes, third-party identity discovery or unsupported metadata fields.
+
 Existing databases receive a backed-up migration that reduces stored latency scatter samples from at most 2,500 to 1,000 per bucket. Counts, maximums and percentile sketches are preserved. The realtime API now returns latency scatter data in place of the old response distribution; update external consumers together with Keeper.
 
 `USAGE_RAW_RETENTION_DAYS=0` keeps archived request details indefinitely. Values of 90 or more enable expiry of archive rows by request time; the hot table retains 90 local calendar days. Aggregated history and backup retention are independent. Deleted details cannot be used for later recalculation. Invalid values below 90 fall back to permanent retention with a warning.
