@@ -30,7 +30,7 @@ const providerBrandIconUrlByKey: Readonly<Record<ProviderBrandIconKey, string>> 
 
 export function providerBrandIconKey(providerType: string | null | undefined): ProviderBrandIconKey | undefined {
   const normalized = providerType?.trim().toLowerCase()
-  return normalized ? providerBrandIconKeyByType[normalized] : undefined
+  return normalized && Object.hasOwn(providerBrandIconKeyByType, normalized) ? providerBrandIconKeyByType[normalized] : undefined
 }
 
 export function ProviderBrandIcon({ providerType, size, ariaLabel, className }: ProviderBrandIconProps) {

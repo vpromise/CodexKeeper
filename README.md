@@ -97,6 +97,12 @@ exact request-endpoint display aliases between both request lists. Raw endpoints
 and exports stay unchanged. v2.0.3 has been reviewed without adopting its optional
 layout changes, third-party identity discovery or unsupported metadata fields.
 
+Four independent fixes from v2.1.0 are selectively backported: credential dialogs
+restore focus when their opener disappears, health tooltip arrows align with the
+edge buckets, provider icons reject inherited object names, and API key listing
+honors caller cancellation while waiting for SQLite. The existing credential
+layout, polling, pricing and collection protocol are retained; SSE remains pending.
+
 Existing databases receive a backed-up migration that reduces stored latency scatter samples from at most 2,500 to 1,000 per bucket. Counts, maximums and percentile sketches are preserved. The realtime API now returns latency scatter data in place of the old response distribution; update external consumers together with Keeper.
 
 `USAGE_RAW_RETENTION_DAYS=0` keeps archived request details indefinitely. Values of 90 or more enable expiry of archive rows by request time; the hot table retains 90 local calendar days. Aggregated history and backup retention are independent. Deleted details cannot be used for later recalculation. Invalid values below 90 fall back to permanent retention with a warning.

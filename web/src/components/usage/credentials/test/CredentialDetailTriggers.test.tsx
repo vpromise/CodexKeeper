@@ -102,6 +102,7 @@ describe('credential detail name triggers', () => {
     expect(onOpenDetails).not.toHaveBeenCalled()
     await act(async () => authFileTrigger!.click())
     expect(onOpenDetails).toHaveBeenCalledWith(authFileRow)
+    expect(document.activeElement).toBe(authFileTrigger)
     expect(container.querySelector('[aria-label="usage_stats.credentials_edit_title"]')).not.toBeNull()
   })
 
@@ -119,5 +120,6 @@ describe('credential detail name triggers', () => {
     const aiProviderTrigger = container.querySelector<HTMLButtonElement>('[data-credential-detail-trigger="true"]')
     await act(async () => aiProviderTrigger!.click())
     expect(onOpenDetails).toHaveBeenCalledWith(aiProviderRow)
+    expect(document.activeElement).toBe(aiProviderTrigger)
   })
 })

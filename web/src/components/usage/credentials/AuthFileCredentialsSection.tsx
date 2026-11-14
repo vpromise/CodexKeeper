@@ -298,7 +298,10 @@ export function AuthFileCredentialsSection({ rows, timeZone, total, page, totalP
                 type="button"
                 className={styles.credentialDetailNameButton}
                 data-credential-detail-trigger="true"
-                onClick={() => onOpenDetails(row)}
+                onClick={(event) => {
+                  event.currentTarget.focus()
+                  onOpenDetails(row)
+                }}
               >
                 <span className={styles.credentialDetailNameText}>{row.displayName}</span>
                 <span className={styles.credentialDetailNameArrow} aria-hidden="true">‹</span>

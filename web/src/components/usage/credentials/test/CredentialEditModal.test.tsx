@@ -161,6 +161,30 @@ describe('credential unified editor', () => {
     expect((document.activeElement as HTMLInputElement).checked).toBe(false)
   })
 
+  it.each(['auth-file', 'ai-provider'] as const)('restores the %s filter when the opener and editor leave in the same commit', async (kind) => {
+    function Harness() {
+      const fallbackRef = useRef<HTMLInputElement | null>(null)
+      const [open, setOpen] = useState(false)
+      const [visible, setVisible] = useState(true)
+      return <main>
+        <input ref={fallbackRef} type="checkbox" aria-label="Enabled only" />
+        {open && <CredentialEditModal selection={{ ...selection(), kind }} fallbackFocusRef={fallbackRef}
+          onClose={() => setOpen(false)} onSaveField={async () => undefined}
+          onSaved={() => { setVisible(false); setOpen(false) }} />}
+        {visible && <button data-test-edit onClick={() => setOpen(true)}>Edit</button>}
+      </main>
+    }
+    await act(async () => root.render(<Harness />))
+    const trigger = container.querySelector<HTMLButtonElement>('[data-test-edit]')!
+    await act(async () => { trigger.focus(); trigger.click() })
+    await change(field('alias'), 'Updated')
+    await act(async () => button('save').click())
+    expect(trigger.isConnected).toBe(false)
+    const fallback = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!
+    expect(document.activeElement).toBe(fallback)
+    expect(fallback.checked).toBe(false)
+  })
+
   it('ignores IME confirmation and saves once on the following ordinary Enter', async () => {
     const save = vi.fn(async () => undefined)
     await render(save)

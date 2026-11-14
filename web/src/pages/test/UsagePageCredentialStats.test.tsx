@@ -137,6 +137,20 @@ describe('UsagePage credential detail statistics', () => {
     expect(api.fetchUsageIdentity).toHaveBeenCalledTimes(calls);
   });
 
+  it.each([1, 2] as const)('restores the type %s section filter after a detail opener disappears', async (authType) => {
+    await render(authType);
+    const fallback = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    const opener = container.querySelector<HTMLButtonElement>('[data-credential-detail-trigger]')!;
+    await act(async () => { opener.focus(); opener.click(); });
+    api.fetchUsageIdentitiesPage.mockResolvedValue({ identities: [identity(authType, 20, '2')], total_count: 12, total_pages: 2 });
+    await act(async () => triggerHeaderRefresh());
+    expect(opener.isConnected).toBe(false);
+    await act(async () => button('Close').click());
+    await act(async () => new Promise(resolve => setTimeout(resolve, 400)));
+    expect(document.activeElement).toBe(fallback);
+    expect(fallback.checked).toBe(false);
+  });
+
   it('ignores a detail response started before reset', async () => {
     await render(2);
     const pending = Promise.withResolvers<UsageIdentity>();

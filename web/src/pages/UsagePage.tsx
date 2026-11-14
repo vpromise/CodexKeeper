@@ -2387,6 +2387,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
       <CredentialDetailDrawer
         open={credentialDetailOpen}
         selection={currentCredentialDetailSelection}
+        fallbackFocusRef={credentialEditFallbackRef}
         timeZone={credentialTimeZone}
         onResetStats={handleCredentialStatsReset}
         onAuthRequired={onAuthRequired}

@@ -13,6 +13,15 @@ describe('ProviderBrandIcon', () => {
     },
   )
 
+  it.each(['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf'])('rejects inherited object names such as %s', (providerType) => {
+    expect(providerBrandIconKey(providerType)).toBeUndefined()
+    expect(renderToStaticMarkup(<ProviderBrandIcon providerType={providerType} size={30} />)).toBe('')
+  })
+
+  it.each([[' CLAUDE ', 'claude'], ['Codex', 'codex']])('normalizes the native name %s', (providerType, expected) => {
+    expect(providerBrandIconKey(providerType)).toBe(expected)
+  })
+
   it('rejects removed provider aliases', () => {
     expect(providerBrandIconKey('gemini-cli')).toBeUndefined()
     expect(providerBrandIconKey('gemini-interactions')).toBeUndefined()

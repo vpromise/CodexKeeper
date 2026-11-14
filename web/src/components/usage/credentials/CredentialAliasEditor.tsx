@@ -22,7 +22,10 @@ export function CredentialAliasEditor({ identityId, displayName, disabled = fals
             type="button"
             className={`${styles.credentialAliasNameSlot} ${styles.credentialDetailNameButton}`}
             data-credential-detail-trigger="true"
-            onClick={onOpenDetails}
+            onClick={(event) => {
+              event.currentTarget.focus()
+              onOpenDetails()
+            }}
           >
             <span className={styles.credentialDetailNameText}>{displayName}</span>
             <span className={styles.credentialDetailNameArrow} aria-hidden="true">‹</span>
