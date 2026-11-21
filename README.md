@@ -103,6 +103,11 @@ edge buckets, provider icons reject inherited object names, and API key listing
 honors caller cancellation while waiting for SQLite. The existing credential
 layout, polling, pricing and collection protocol are retained; SSE remains pending.
 
+v2.1.1 has also been reviewed. Its independent idle-health color fix is
+backported: empty buckets follow the existing light/dark theme, while success,
+warning and failure colors remain unchanged. SIWC still awaits metadata from
+the supported CodexProxy; the existing polling and credential layout are retained.
+
 Existing databases receive a backed-up migration that reduces stored latency scatter samples from at most 2,500 to 1,000 per bucket. Counts, maximums and percentile sketches are preserved. The realtime API now returns latency scatter data in place of the old response distribution; update external consumers together with Keeper.
 
 `USAGE_RAW_RETENTION_DAYS=0` keeps archived request details indefinitely. Values of 90 or more enable expiry of archive rows by request time; the hot table retains 90 local calendar days. Aggregated history and backup retention are independent. Deleted details cannot be used for later recalculation. Invalid values below 90 fall back to permanent retention with a warning.

@@ -6,17 +6,17 @@
 
 | 项目 | 已核实状态 |
 | --- | --- |
-| 本次检查时间 | 2026-11-15 05:23:00 +08:00 |
+| 本次检查时间 | 2026-11-22 05:08:50 +08:00 |
 | 发布目标 | `https://github.com/vpromise/CodexKeeper` 的 `main`，origin fetch/push 均为此地址 |
-| 本次隔离候选基线 | [`bc35c468d8e493aba19ab3d1dc9223f3acb7e918`](https://github.com/vpromise/CodexKeeper/commit/bc35c468d8e493aba19ab3d1dc9223f3acb7e918)，开始时远端／原 main 相同，工作区干净、无额外本地提交 |
-| 最新正式发布／实际集成边界 | [v2.1.0](https://github.com/Willxup/cpa-usage-keeper/releases/tag/v2.1.0)，tag commit `41b34f12dbef209292765415b860583aad5afc09`，2026-11-10 16:09:46 +08:00；继续原生精简 v1，仅选择性适配，**不是 v2 升级** |
-| 本次完整新增范围 | [`aa687529e392833e17ad0eb7ccfc4dec8eda0982..7d288484f9a474b4ec48861f6bce204836f5dc11`](https://github.com/Willxup/cpa-usage-keeper/compare/aa687529e392833e17ad0eb7ccfc4dec8eda0982...7d288484f9a474b4ec48861f6bce204836f5dc11)：53 提交、16 主线 PR、94 最终差异文件；31 已发布、22 未发布 |
-| 稳定版重新复核 | v2.0.3 `9db74cfc` 至 v2.1.0 共 69 提交，含上轮已审 38 个现已发布提交；重新判断原生候选与历史待决 |
-| 主分支已审查检查点 | `7d288484f9a474b4ec48861f6bce204836f5dc11`，完整分类，不代表全部实现或完成未采纳项集成验证 |
-| 本次实际改动 | #687 原生详情／编辑焦点、#690 原生品牌 guard、#693 健康提示箭头、#696 独立查询 context 传播；其余 SSE 未实施 |
-| 待确认事项 | 原 9 项延续，新增 #696 SSE／阅读暂停，共 10 项，具体范围见文末 |
+| 本次隔离候选基线 | [`2ee330d77c51f5453e47e725e9cc48e55d411ca5`](https://github.com/vpromise/CodexKeeper/commit/2ee330d77c51f5453e47e725e9cc48e55d411ca5)，开始时远端／原 main 相同，工作区干净、无额外本地提交；此提交落实上轮四组选择性修复 |
+| 最新正式发布／实际集成边界 | [v2.1.1](https://github.com/Willxup/cpa-usage-keeper/releases/tag/v2.1.1)，tag commit `5c97bee91678e3cd9e75201a8025bfcaadf77681`，2026-11-15 23:08:45 +08:00；继续原生精简 v1，仅选择性适配，**不是 v2 升级** |
+| 本次完整新增范围 | [`7d288484f9a474b4ec48861f6bce204836f5dc11..e5e8f1a4c85208be29e8ef80f0c262dfbe362a8b`](https://github.com/Willxup/cpa-usage-keeper/compare/7d288484f9a474b4ec48861f6bce204836f5dc11...e5e8f1a4c85208be29e8ef80f0c262dfbe362a8b)：19 提交、4 主线 PR、41 最终差异文件；5 已发布、14 未发布 |
+| 稳定版重新复核 | v2.1.0 `41b34f12` 至 v2.1.1 共 27 提交，含上轮已审 22 个现已发布提交；至 main 共 41 提交、12 主线组，逐项复核并延续全部历史待决 |
+| 主分支已审查检查点 | `e5e8f1a4c85208be29e8ef80f0c262dfbe362a8b`，完整分类，不代表全部实现或完成未采纳项集成验证 |
+| 本次实际改动 | #709 原生空白健康格使用既有主题色；仅两处 CSS 声明及 README／台账 |
+| 待确认事项 | 10 项延续，无新增；#711 现已发布，但不会自动批准 SSE 或取消每会话上限，具体范围见文末 |
 
-本轮核实官方 Releases 列表与 latest：v2.1.0 非 draft／prerelease，v2.0.3 后没有其他中间正式版。Git ref API 与独立 fetch 解析到同一 tag commit，不使用 `target_commitish`；v2.1.0 是当前 main 的祖先。独立 refs 为 `refs/upstream-sync/cpa/main`、`refs/upstream-sync/cpa/releases/v2.1.0`，不覆盖 fork tags、不改 origin。当前决定以 2026-11-15 小节为准。
+本轮核实官方 Releases 列表与主分支：v2.1.1 非 draft／prerelease，v2.1.0 后没有其他中间正式版。Git ref API 与独立 fetch 解析到同一 tag commit，不使用 `target_commitish`；v2.1.1 是当前 main 的祖先。独立 refs 为 `refs/upstream-sync/cpa/main`、`refs/upstream-sync/cpa/releases/v2.1.1`，不覆盖 fork tags、不改 origin。当前决定以 2026-11-22 小节为准。
 
 ## 有来源说明的历史基线
 
@@ -511,3 +511,81 @@ Releases 列表、latest、tag Git ref API 与 fetch 重新确认最新正式版
 10. **[#696](https://github.com/Willxup/cpa-usage-keeper/pull/696) 请求记录 SSE／阅读暂停。** 当前第一页每 10 秒轮询（`shouldAutoRefreshUsageTab` 仅 eventsPage===1），另可手动刷新；后页不自动刷新。建议采用前先批准独立原生兼容方案：保留 REST／导出／筛选、读时计价及 v0 采集；固定初始 snapshot／有界可重放 cursor，SQLite 提交后通知，按批读取当前 alias／Key 标签；15 秒 heartbeat，有界批次／回放／队列、写超时；浏览历史暂停连接，回顶部恢复，失效／撤销 session 与 app shutdown 关闭并释放。首版保留稳定 #696 的全局 64／每会话 3 上限，不自动采用未发布 #711 的放宽；#711 重试计数先解决迟到回调竞态再评估。无 DB migration，不引入 CostReadGate／v2 存量费用。收益低延迟与阅读稳定；风险长连接／DB 负载、代理缓冲／超时、snapshot/live/history 竞态、重连／过期与暂停语义。需决定保留现有 10 秒轮询，还是批准上述确切原生 SSE 范围和容量策略；需 mock 并发／背压／断连重放／迟到事件／cursor／alias 与价格变化／过期撤销／子路径，以及虚拟列表／键盘／触摸窄屏和代理超时验收。可回退原 endpoint＋前端轮询，无历史重写；部署仍需单独请求。
 
 以上十项不因定时执行、解释过或此前部署请求而获批。#709／#712 等技术延期由稳定版及生产者条件自动触发后续复核，不属于当前人工决策。
+
+## 2026-11-22：v2.1.1 空白健康格主题修复
+
+### 身份、覆盖范围与合并复核
+
+开始时原 checkout／origin/main／GitHub main 同为干净的 `2ee330d77c51f5453e47e725e9cc48e55d411ca5`，ahead/behind 0/0。已读取最新 skill、三份 references、两份 README、完整台账及适用目录，未发现 AGENTS.md。活跃 Keeper 聊天只有本任务；另一项 Proxy 同步属于不同仓库，未接管。common Git directory 的原子锁由长期 Python owner PID `39011`、host `Wills-Mac-Studio.local` 持有，run `keeper-20261122-01a1242c`，开始时间 `05:03:12 +08:00`；工作分支 `sync/keeper-20261122`，隔离 worktree `/Users/vpromisex/Files/Code/RPCodex/keeper-sync-20261122`。没有 stash/reset/clean 用户 checkout 或导入上游 ancestry。
+
+官方 Releases 列表、分支 API、Git ref API 与单独 fetch 对齐：v2.1.1 tag 直接指向 `5c97bee91678e3cd9e75201a8025bfcaadf77681`，不是 target_commitish；发布于上海时间 11 月 15 日 23:08:45。新增范围 `7d288484..e5e8f1a4` 共 **19 提交**：新进入正式版 5、未发布 14。连同上轮未发布 22 个，完整覆盖 v2.1.0 `41b34f12..e5e8f1a4` 的 **41 提交、12 主线组**，其中 v2.1.1 包含 27。旧 22 个的不可变对象／差异与上轮证据一致，重新按现有原生 caller 和正式发布状态分类。
+
+19 个新提交逐一枚举父 SHA、审查四个新 PR 的理由、最终差异与测试依赖，未发现 revert。5 个新增 merge 的 remerge-diff 只有 `b9be5431d600beae7b9bbe761848bc07ce2c8614` 非空：解决 Muse 的套餐映射／测试冲突，使 Power／Maximum 使用 #718 的新 badge，保留隐藏未知套餐断言；属于未采用的 Muse 与未发布标签依赖，无独立原生修复遗漏。最终树而非分支中间状态为判断依据。
+
+### 本次全量分组决定
+
+下表贡献数按 first-parent 增量去重，合计 41；前八组 22 个已于上轮审查，本轮解除“未发布”条件后复核。
+
+| 来源／不可变 merge SHA（贡献数） | 当前行为、依赖、分类与重评条件 |
+| --- | --- |
+| [#701](https://github.com/Willxup/cpa-usage-keeper/pull/701)／`0fabaa0485245e05180a89d661662f72bc8fdc7d`（2） | 已发布，无同一测试路径：Havana 测试改用 2025 历史回退日；本地未采用 #656，无该 calendar_test.go。随时间方案获批复核，不改现有断言。 |
+| [#703](https://github.com/Willxup/cpa-usage-keeper/pull/703)／`ab827c45486cec9a166fd25ad0ecbc971ed5c8dc`（2） | 已发布，排除新卡片／配额历史截图覆盖，当前 README 保留 fork 实际界面与精简说明。 |
+| [#707](https://github.com/Willxup/cpa-usage-keeper/pull/707)／`bd208c0521bf142cc24f95dfcfeaa06e5fb8e40c`（2） | 已发布，排除 Antigravity Ultra Lite／Argon。usage_stats 的变化仅在 Antigravity subscription 分支增加 ultra-lite，原生无 caller；不引入持久费用列。 |
+| [#708](https://github.com/Willxup/cpa-usage-keeper/pull/708)／`f152858608463967af69a4ea3f0614e15f2dde2e`（2） | 已发布，排除 compact switch 渐变／边框外观；本地使用既有启停按钮，无同一 switch variant，不恢复卡片改版。 |
+| [#709](https://github.com/Willxup/cpa-usage-keeper/pull/709)／`a2a3109ec63eaad089fcf23c07ce0f263e76df26`（2） | **适用并适配**子提交 `88c712c71e46523f8c460b100917194910aba7b6`：基础／empty health cell 两处 #e5e7eb 改用既有 --border-secondary。原生认证文件、AI Key 与详情共用 CredentialHealthPanel；旧深色显示亮灰已复现，修后跟随现有主题。保留三种健康颜色、几何、阈值、aria 与操作，不引入 compact layout。 |
+| [#710](https://github.com/Willxup/cpa-usage-keeper/pull/710)／`dbd4d412ec92f9f1412ba2559c6df3499c0fe36c`（3） | 已发布，排除可选副标题→help 交互；保留现有可见说明，不复制中间删除态。相应测试变化服务新增 help，无独立原生请求 tooltip 修复。 |
+| [#712](https://github.com/Willxup/cpa-usage-keeper/pull/712)／`636d81126ee79e0c9053061e354f0412714d193e`（5） | 已发布但**生产者依赖仍延期**。Codex SIWC 五 nullable 字段、迁移／同步／API／状态卡须成组适配；实际 Proxy serializer 无五字段。待真实提供后，考虑原 UI 只读保存／显示，不补历史或扩展登录。 |
+| [#711](https://github.com/Willxup/cpa-usage-keeper/pull/711)／`7d288484f9a474b4ec48861f6bce204836f5dc11`（4） | 已发布，仍依赖待确认 10 的 SSE。去每会话 3 限制、只保留全局 64，容量初次＋3 重试延迟报错；manual refresh 迟到 reject 可提前增加计数的已知边缘问题未消失。发布不等于容量方案获批；当前 10 秒轮询无该 hook。 |
+| [#713](https://github.com/Willxup/cpa-usage-keeper/pull/713)／`3f7b595e7a78b876c06a2bd71e554750d8494942`（2） | 新增已发布；依赖 #712，SIWC 字号 12→11、600 字重／1.25 行高，本地无该状态标签。随 SIWC 可用后按旧行式 UI 评估，不单独添加空标签。 |
+| [#714](https://github.com/Willxup/cpa-usage-keeper/pull/714)／`5c97bee91678e3cd9e75201a8025bfcaadf77681`（3） | 新增已发布；排除 session hover 浮起、阴影、scroll padding 和三语言标题改名。无认证／session 正确性修复，保留已有会话管理 UI，不恢复已删嵌入／Key 用户路径。 |
+| [#718](https://github.com/Willxup/cpa-usage-keeper/pull/718)／`590b5504e0dffc85138c9a0cd8ce4a3035c5c616`（6） | **未发布**；原生套餐识别／显示潜在适用：Claude Max 5x/20x 改 Max/Ultra，Codex pro-lite／pro-5x 映射 pro-10x、promax→pro-50x，增加 Go/Business/Edu；同时隐藏未知套餐、重配 badge 动画与去掉优先级显式取消。暂不移植；正式发布后核实原始 plan 合同与历史值兼容，优先拆分有证据的原生信息修复，保留当前未知 Codex 原值显示和现有编辑交互，不将独立 AccountPool 套餐请求视作 Keeper 改版授权。 |
+| [#719](https://github.com/Willxup/cpa-usage-keeper/pull/719)／`e5e8f1a4c85208be29e8ef80f0c262dfbe362a8b`（8） | **未发布且范围外排除**；Meta/Muse DCA 下载、外部 quota POST、provider／subscription registry、品牌／筛选和测试。共享 inspection 只是将 Claude 同一 used-percent 实现改名并增加 Meta，原生没有独立 bug；不恢复已移除 provider、元数据或品牌。内部 merge 冲突已计入此组。 |
+
+### 历史待决与当前 CodexProxy 兼容性
+
+本轮只读 Proxy 的已提交 `codex/self-service-oauth`／HEAD `68988b5f737d784beaf5abee606a194e746513df`，观察时 clean；另一个同步可继续推进自己的隔离候选，本轮未 fetch／修改／推送该仓库。四个合同 blob：producer `d91c8a2820cdea5a5212b1bb431d7effe25a8a18`、RESP `685eec88ff9ec6b246faf8764b43ae983c327cef`、management routes `569feaf6f3b253980bfb536a6e1d0f9ea4cb7eff`、key PATCH `eefa18fb0195206c75d1fab30448d10c64403360`；auth-files serializer blob `258893cdb9828d41975c22e400ad93803072c00e` 未含 siwc 字段。
+
+保持 /v0/management、AUTH／SUBSCRIBE usage／LPOP usage、原生 credential／api-call／reset-quota，队列仍为 request_id／response_headers／flat tokens＋token_breakdown；API Key PATCH 没有 priority。#623／#644／#620／#669 所需 execution/trace/node/fork/compaction、effective_service_tier、stream、is_native_key/access_provider 仍无来源；不强制 execution_id、不回写 v8、不补造历史。#671 仍只有已支持四个原生 executor 的实际合同，不引入任意 fallback。#673 仍依赖未批准费用／时间读取／quota 交互；#675 候选语义未批准，#680 无本地 hook。
+
+#605/#657/#660/#664 容器／workflow 批次继续延期：Docker CLI 仍不可用，没有把正式发布当作验证通过。历史 #619/#606/#661/#670 原生/#672/#676、total-only 及上轮四组修复均保留；未批准的十项未实施。排名、Key 用户登录、第三方发现、非原生 provider、Star History 和可选外观继续按既定范围排除。未连接生产管理端点／队列或 SSH；此结论限于已提交本地源码接口。
+
+### 最终候选验证与输入身份
+
+环境 darwin/arm64、Go 1.27.3、Node 26.13.0、npm 11.20.0、Apple clang 21.0.0，Go 测试／构建显式 CGO_ENABLED=1。仅两处颜色声明属于应用差异，没有新增实现镜像测试。所有 SQLite／队列／quota／凭据测试采用现有临时 fixtures 与 mocks，无生产 .env、数据库、采集队列、真实凭据写操作或 reset grant。
+
+| 本次实际检查 | 退出码／结果 |
+| --- | --- |
+| `npm --prefix web ci` | 0，239 包、原 lock；audit 18 项（9 moderate/7 high/2 critical），3 个既有安装脚本 allowScripts 提示。未升级／自动修依赖，不声称漏洞已修复。 |
+| `NODE_OPTIONS=--no-experimental-webstorage npm --prefix web test -- --reporter=json ...` | 0，158 文件、1279 pass，0 fail／skip；使用 README 的 Node 26 happy-dom 兼容选项。 |
+| `npm --prefix web run lint`、`run typecheck`、`run build` | 均 0，真实 Vite build 213 modules，保留既有 >500 kB chunk 提示。typecheck 不替代测试。恢复 tracked 空 .gitkeep 后才开始 Go embedding。 |
+| `CGO_ENABLED=1 TZ=Asia/Shanghai go test -count=1 -json ./cmd/... ./internal/...` | 0，29 个有测试包、2463 tests/subtests pass，38 个无测试包，1 skip：internal/logging/test.TestDedicatedErrorMaintenanceClosesStaleDailyFile（macOS 无 /proc/self/fd），无 cached 结果或新增排除。 |
+| `CGO_ENABLED=1 go build -o <temporary>/cpa-usage-keeper ./cmd/server`、`--version` | 均 0，输出 dev，build info 确认 CGO=1、darwin/arm64；未加载服务配置。binary SHA256 `6539787c39a5c7ef9355fa128cb4b5963c8b60b1458517eea6d325efc580e09d`。 |
+| 真实组件浏览器检查 | Chrome extension，本地合成 Codex／Claude 混合四状态＋全空面板，三语言×明暗×桌面/窄屏共 12 组。修前 empty 两主题均 rgb(229,231,235)，修后 light=rgb(227,225,219)、dark=rgb(58,53,48)；三种有请求状态颜色及 cell 几何不变，无横向溢出、console errors=[]。请求 viewport 1440/390，当前浏览器缩放下实测 CSS 宽 1600/433，以实测值报告；不声称完成精确 390px 验收。 |
+| 最终输入／diff 核对 | 1091 个源码／测试／lock／构建配置／公开资源逐文件核对，较 11-15 只改变该 SCSS；5 个真实 embed 文件。临时 fixture 移出源码、Vite 停止、tab 关闭及 viewport reset；应用 diff 仅两处 background。 |
+
+证据在 `/Users/vpromisex/Files/Codex/2026-10-10/new-chat/work`：keeper-review-api-20261122.json、keeper-review-manifest-20261122.json（完整 41 提交父链／12 组／5 新 merge）、四份新 PR diff／remerge、真实测试 JSON／logs、keeper-validation-manifest-20261122.json、keeper-browser-validation-20261122.json 与合成 fixture。source digest `055aa67132c39a1bbe089341aa1f3e5035a9ecdeb2ae85b66bba62a3aea65f1f`；assets digest `9e20f083efc40b743a679212ba3f6ab180f1435508abae8bc05372ce586b78e3`。本轮 digest 明确定义为 path 排序 JSON 对象、紧凑 separators 的 SHA256，不以不同序列化的历史 digest 比较替代逐文件比较。候选身份为 2ee330d7 加选定差异，binary 的 dirty VCS 信息由 manifest 解释，不伪称嵌入未来 commit。README／台账不改变这些 runtime 输入。
+
+未覆盖 Linux／Windows runtime、WebKit／实体触摸、精确 390 CSS px、完整业务页面／生产端到端、Docker 或未采用模块集成。浏览器验证为真实组件 dev bundle，正式前端 build 另行通过，不称浏览器运行的是正式 bundle。仅 CSS 变化，无并发路径改动，本轮不扩大 race；上述 /proc 日志 skip 如实保留。
+
+### 发布与部署边界
+
+发布只包含 #709 两处声明、两份 README 与本台账。main push 当前只触发 CI；binary/container 发布仍仅 v* tag，dev 为 workflow_dispatch。未改工作流／策略、不创建 tag/Release、不发布镜像、不 dispatch、不部署或 SSH、不改 Proxy／AccountPool。历史部署状态保留，不能把本次 GitHub 发布理解为更新 toth。
+
+发布前检查原 checkout／远端未变，显式暂存四文件、核对完整 publication history 及已验证输入。正常推送 fork main 后回读 exact SHA 和 Actions/check-runs/status；真实结果留在本轮 run-result，避免循环自引用文档提交。失败保留唯一候选，成功后只清理自有 worktree／分支／lock；原 checkout 仅在再次确认 clean 且 HEAD 未变后 fast-forward。
+
+### 全部待确认事项（10 项延续，无新增）
+
+本轮没有新的 Keeper 人工批准；AccountPool 的部署、显示邮箱／套餐／渠道和独立查看密码授权不改变 Keeper 的统计／界面／认证范围。skill `/Users/vpromisex/.codex/skills/codexkeeper-upstream-sync/SKILL.md` 明确要求 **“Do not interpret silence, a previous explanation, or an item's presence in the ledger as approval.”** 对费用／统计／管理员认证、迁移与新增 SSE 架构适用其 **“Before changing provider/login scope, the collection protocol, billing/statistical definitions, destructive migration or retention policy, automatic quota-reset-grant use, or substantial architecture/dependencies, discuss a concrete plan unless that plan is already authorized.”**；对界面方案适用 fork-contracts 的 **“Preserve the existing layout, theme and responsive behavior unless the change itself is approved.”**。以下变化待确认，独立修复照常发布；技术延期和明确范围排除不混入此列表。
+
+1. **[#630](https://github.com/Willxup/cpa-usage-keeper/pull/630) 用量分布布局。** 当前 300/250 px、日期行／图例、汇总只看详情。建议保留；可选完整方案是 240/200 px、去两行、汇总切曲线及相应 tooltip。收益紧凑，风险日期可见性和点击语义。需决定保留或采用整组；无迁移，三语言／键盘／触摸／明暗窄屏回归，回退组件并重建。
+2. **[#595](https://github.com/Willxup/cpa-usage-keeper/pull/595)／[#621](https://github.com/Willxup/cpa-usage-keeper/pull/621)／[#642](https://github.com/Willxup/cpa-usage-keeper/pull/642)／[#649](https://github.com/Willxup/cpa-usage-keeper/pull/649) 费用历史。** 当前读时估价，改价影响历史估算。建议保持；可选原生方案是验证备份指纹、旧价快照、可恢复费用回填、缺明细费用保留未知，绝不减少旧请求／Token 聚合，只有显式操作才重算。收益历史费用稳定／灵活规则；风险定义、时间与磁盘、迁移恢复。需决定是否采用该不减历史总量方案；验证备份失败／中断恢复／历史总量与费用一致性，回退用验证备份，不能让旧二进制直接开迁移库。
+3. **[#627](https://github.com/Willxup/cpa-usage-keeper/pull/627) 配额历史交互。** 当前既有周期呈现。建议保持；可选摘要常显、明细默认折叠、选择周期切图、返回图表滚动。收益易浏览长历史，风险操作与默认内容改变。需决定整组是否采用；无 DB，周期／删除／焦点／触摸／reduced-motion／窄屏回归，回退前端。
+4. **[#629](https://github.com/Willxup/cpa-usage-keeper/pull/629)／[#635](https://github.com/Willxup/cpa-usage-keeper/pull/635) 模型速度。** 当前无新增比较图。建议暂不扩展；可选原生每请求 output/latency 与 output/(latency-TTFT) 的 sum/count 均值、可恢复回填及经确认位置的图表，保留旧 totals。收益诊断性能，风险均值口径／缺样本／schema 与布局。需决定是否接受指标、均值及图表；旧 schema／回填重试／无效 TTFT／缓存与 UI 回归，库回退用备份。
+5. **[#638](https://github.com/Willxup/cpa-usage-keeper/pull/638) 图表刷新。** 当前动画和 tooltip 手势不变。可批准有限方案：只保留成功数据并修刷新动画，不改现有关闭／触摸／键盘行为、不新增图表。收益少闪烁，风险过期数据和 query scope 竞态。需确认此有限范围；自动／手动、成功／失败、切查询／焦点及明暗窄屏测试，无 DB，可回退前端。
+6. **[#655](https://github.com/Willxup/cpa-usage-keeper/pull/655) OIDC。** 当前管理员密码与会话。建议保持；可选默认关闭、启用必填可信 issuer/client 和精确 subject 白名单、保留密码备用，不恢复 Key 用户登录。收益集中认证，风险管理员信任、依赖及残留 session。需决定加入与否及 IdP/主体；mock IdP 拒绝／重放／CSRF／撤销／子路径／限流回归，降级先撤销 OIDC session，schema 回退评估备份。
+7. **[#656](https://github.com/Willxup/cpa-usage-keeper/pull/656) 时间读取／日均分母。** 当前固定 1440 分钟，DST/异常午夜读取及缓存边界问题仍在。建议批准后独立适配只读原桶解释、事件／缓存日界和标签，并明确采用实际 1380/1500 等日长分母；不重算历史、不改存储、不带入 v2 费用。收益 DST 正确，风险日读数改变／旧桶兼容。需决定是否接受该范围和实际日长；UTC／上海／纽约／柏林／Santiago／Lord Howe、亚秒／归档／rollup-only／缓存测试，无写库迁移，可回退 reader。#673 不自动获批。
+8. **[#658](https://github.com/Willxup/cpa-usage-keeper/pull/658) Credentials 命名／路由。** 当前 /auth-files、旧 API 字段和偏好。建议拒绝破坏性改名；可选英文新称谓并兼容旧 URL／字段／偏好，中文不变。收益称谓准确，风险消费者兼容和重构。需选择保留或兼容方案；新旧 URL/API shape、偏好、quota/reset/stats/request-log 与三语言回归，不删历史，可退显示层。
+9. **[#675](https://github.com/Willxup/cpa-usage-keeper/pull/675) 按页面／时间筛 API Key 候选。** 当前全量 active roster。建议保持；可选现有四页下拉仅列窗口已用 key，保留不在候选的已选 key 与无范围 roster，自动／切范围只失效缓存、下次打开加载，手动立即更新。收益列表相关，风险未用 Key 隐藏／边界／缓存过期。需决定是否改候选语义；无迁移，四页、冷热缓存、已选缺失、手动自动、时区/DST、键盘窄屏回归，可退原 hook/API；不增加第三方 discovery 或 Key 登录。
+10. **[#696](https://github.com/Willxup/cpa-usage-keeper/pull/696) 请求记录 SSE／阅读暂停。** 当前第一页每 10 秒轮询（`shouldAutoRefreshUsageTab` 仅 eventsPage===1），另可手动刷新；后页不自动刷新。建议采用前先批准独立原生兼容方案：保留 REST／导出／筛选、读时计价及 v0 采集；固定初始 snapshot／有界可重放 cursor，SQLite 提交后通知，按批读取当前 alias／Key 标签；15 秒 heartbeat，有界批次／回放／队列、写超时；浏览历史暂停连接，回顶部恢复，失效／撤销 session 与 app shutdown 关闭并释放。建议首版仍保留 #696 的全局 64／每会话 3 上限；#711 已随 v2.1.1 正式发布，但取消每会话上限尚未批准，且重试计数须先解决迟到回调竞态再评估。无 DB migration，不引入 CostReadGate／v2 存量费用。收益低延迟与阅读稳定；风险长连接／DB 负载、代理缓冲／超时、snapshot/live/history 竞态、重连／过期与暂停语义。需决定保留现有 10 秒轮询，还是批准上述确切原生 SSE 范围和容量策略；需 mock 并发／背压／断连重放／迟到事件／cursor／alias 与价格变化／过期撤销／子路径，以及虚拟列表／键盘／触摸窄屏和代理超时验收。可回退原 endpoint＋前端轮询，无历史重写；部署仍需单独请求。
+
+以上十项不因定时触发、未回复或 AccountPool 的另项授权而获批。#709 已落实；#712/#713 等技术依赖延期与范围外排除不混作人工待决。
